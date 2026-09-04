@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lemon & Stain's Cozy Study Dashboard 🐾</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cat: {
+              50: '#fff8f1',
+              100: '#feeedc',
+              200: '#fddab9',
+              300: '#fcbe86',
+              400: '#fa9d52',
+              500: '#f67824',
+              600: '#e75b16',
+              700: '#bf4313',
+              800: '#983617',
+              900: '#7b2f17',
+              950: '#42140a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    h1, h2, h3, .font-cozy { font-family: 'Quicksand', 'Plus Jakarta Sans', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #fddab9; border-radius: 6px; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #4a3e35; }
+    @keyframes float-paw {
+      0% { transform: translateY(0) scale(0.8); opacity: 1; }
+      100% { transform: translateY(-35px) scale(1.2); opacity: 0; }
+    }
+    .animate-float { animation: float-paw 0.8s ease-out forwards; }
+  </style>
+</head>
+<body class="bg-[#faf6f0] dark:bg-[#151318] text-stone-800 dark:text-stone-100 min-h-screen transition-colors duration-300">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    function useStickyState(defaultValue, key) {
+      const [value, setValue] = useState(() => {
+        const stickyValue = window.localStorage.getItem(key);
+        return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
+      });
+      useEffect(() => {
+        window.localStorage.setItem(key, JSON.stringify(value));
+      }, [key, value]);
+      return [value, setValue];
+    }
+
+    // Robust CSV parser supporting quotes, commas, and multiline values
+    function parseCSV(text) {
+      const p = [];
+      let row = [''];
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        let c = text[i];
+        let next = text[i + 1];
+        if (c === '"') {
+          if (inQuotes && next === '"') {
+            row[row.length - 1] += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (c === ',' && !inQuotes) {
+          row.push('');
+        } else if ((c === '\r' || c === '\n') && !inQuotes) {
+          if (c === '\r' && next === '\n') i++;
+          p.push(row);
+          row = [''];
+        } else {
+          row[row.length - 1] += c;
+        }
+      }
+      if (row.length > 1 || row[0] !== '') p.push(row);
+      return p;
+    }
+
+    function App() {
+      // false = Lemon Mode (Light), true = Stain Mode (Dark)
+      const [isStainMode, setIsStainMode] = useStickyState(false, 'cat_dash_theme_stain');
+      const [time, setTime] = useState(new Date());
+      const [activeTab, setActiveTab] = useState('overview'); // overview, calendar, study, integrations
+
+      // Individual Pet Counters
+      const [lemonPets, setLemonPets] = useStickyState(28, 'cat_dash_lemon_pets');
+      const [stainPets, setStainPets] = useStickyState(32, 'cat_dash_stain_pets');
+      const [floatingEffects, setFloatingEffects] = useState([]);
+
+      // Dynamic Google Sheet Sync Configuration
+      const SPREADSHEET_ID = '14KDi1BMtDPFdYsReC31bNAj-uU3CR0VvcUXVg1XR-lE';
+      const [sheetUrl, setSheetUrl] = useStickyState(
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Active%20Tasks%20%26%20Deadlines`,
+        'cat_dash_sheet_url'
+      );
+      const [syncStatus, setSyncStatus] = useState('Idle');
+      const [lastSyncTime, setLastSyncTime] = useStickyState(null, 'cat_dash_last_sync_time');
+      const [autoSync, setAutoSync] = useStickyState(true, 'cat_dash_auto_sync');
+
+      // Connected Real Tasks Seed Data
+      const defaultTasks = [
+        { id: 1, title: 'Submit Forum #0 & Forum #1', category: 'Grad School', priority: 'Zoomies', due: '2026-09-03', source: 'Augsburg MSW', completed: false, notes: 'Initial discussion forum posts' },
+        { id: 2, title: 'Learning Agreement Brainstorming Forum #1', category: 'Grad School', priority: 'Zoomies', due: '2026-09-03', source: 'Field Seminar', completed: false, notes: 'Brainstorming practicum goals' },
+        { id: 3, title: 'Submit Introduction Forum post', category: 'Grad School', priority: 'Purr-fect', due: '2026-09-04', source: 'Augsburg MSW', completed: false, notes: 'Course introduction on Moodle' },
+        { id: 4, title: 'UHHC Payroll verification & submission', category: 'Work', priority: 'Zoomies', due: '2026-09-04', source: 'UHHC', completed: false, notes: 'Timesheets verification' },
+        { id: 5, title: 'Banfield Pet Hospital check-in for Lemon & Stain 🐾', category: 'Personal', priority: 'Purr-fect', due: '2026-09-05', source: 'Banfield', completed: false, notes: 'Routine wellness check-in' },
+        { id: 6, title: 'Forum #0 Peer Responses', category: 'Grad School', priority: 'Purr-fect', due: '2026-09-07', source: 'Augsburg MSW', completed: false, notes: 'Peer dialogue replies' },
+        { id: 7, title: 'CARE Practicum Training Day (Mendota Heights)', category: 'Work', priority: 'Zoomies', due: '2026-09-08', source: 'CARE Counseling', completed: false, notes: '1155 Northland Dr, 9 AM - 4 PM' },
+        { id: 8, title: 'Supervision sync with Micalah (Remote)', category: 'Work', priority: 'Purr-fect', due: '2026-09-09', source: 'CARE Counseling', completed: false, notes: 'Remote video sync (2-3 PM)' },
+        { id: 9, title: 'In Treatment Forum 1 Initial Post', category: 'Grad School', priority: 'Zoomies', due: '2026-09-11', source: 'Diversity & Inequality', completed: false, notes: 'Clinical reflection post' },
+        { id: 10, title: 'Resilience Survival Guide Handbook (NASW Ethics)', category: 'Grad School', priority: 'Zoomies', due: '2026-09-12', source: 'AOCP Individuals', completed: false, notes: 'Zine/slides/handbook for Prof. Powers' },
+        { id: 11, title: 'In Treatment Forum 1 Peer Response', category: 'Grad School', priority: 'Purr-fect', due: '2026-09-13', source: 'Diversity & Inequality', completed: false, notes: 'Classmate responses' },
+        { id: 12, title: 'Auto Car Payment due date', category: 'Bills', priority: 'Purr-fect', due: '2026-09-15', source: 'Auto Bank', completed: false, notes: 'Monthly auto loan payment' },
+        { id: 13, title: 'Role-Play Family & Client Overview Paper Due', category: 'Grad School', priority: 'Zoomies', due: '2026-09-21', source: 'AOCP Families', completed: false, notes: 'Case overview for Prof. Spicer' },
+        { id: 14, title: 'Final MSW Learning Agreement Due', category: 'Grad School', priority: 'Zoomies', due: '2026-09-26', source: 'Field Seminar', completed: false, notes: 'Official practicum agreement' },
+      ];
+
+      // Connected Real Events
+      const defaultEvents = [
+        { id: 1, title: 'Learning Agreement Forum #1 Due', time: '11:59 PM', date: '2026-09-03', cal: 'Academic', icon: '🎓', location: 'Augsburg Moodle' },
+        { id: 2, title: 'UHHC - In Person Shift', time: '8:00 AM - 4:00 PM', date: '2026-09-04', cal: 'Work', icon: '💼', location: 'Universal Home Health Care' },
+        { id: 3, title: 'Introduction Forum Due', time: '11:59 PM', date: '2026-09-04', cal: 'Academic', icon: '🎓', location: 'Augsburg Moodle' },
+        { id: 4, title: 'Banfield Pet Care Plan Due', time: 'All Day', date: '2026-09-05', cal: 'Bills', icon: '🐾', location: 'Banfield Pet Hospital' },
+        { id: 5, title: 'Morning Workout & Stretch', time: '5:00 AM - 6:00 AM', date: '2026-09-07', cal: 'Wellness', icon: '🧘‍♀️', location: 'Home Gym' },
+        { id: 6, title: 'Forum #0 Response Due', time: '11:59 PM', date: '2026-09-07', cal: 'Academic', icon: '🎓', location: 'Augsburg Moodle' },
+        { id: 7, title: 'CARE Practicum Training Day', time: '9:00 AM - 4:00 PM', date: '2026-09-08', cal: 'Work', icon: '💼', location: '1155 Northland Dr, Mendota Heights' },
+        { id: 8, title: 'Supervision w/ Micalah (Remote)', time: '2:00 PM - 3:00 PM', date: '2026-09-09', cal: 'Work', icon: '💻', location: 'Google Meet' },
+        { id: 9, title: 'UHHC - In Person Shift', time: '7:00 AM - 7:00 PM', date: '2026-09-09', cal: 'Work', icon: '💼', location: 'UHHC' },
+        { id: 10, title: 'UHHC - In Person Shift', time: '7:00 AM - 7:00 PM', date: '2026-09-10', cal: 'Work', icon: '💼', location: 'UHHC' },
+        { id: 11, title: 'CARE - Remote Practicum', time: '11:00 AM - 3:00 PM', date: '2026-09-11', cal: 'Work', icon: '💼', location: 'Remote EHR' },
+        { id: 12, title: 'AOCP w/ Individuals - Class', time: '6:00 PM - 9:00 PM', date: '2026-09-11', cal: 'Academic', icon: '🎓', location: 'Hagfors 151 (Prof. Powers)' },
+        { id: 13, title: 'AOCP w/ Families - Class', time: '9:00 AM - 12:00 PM', date: '2026-09-12', cal: 'Academic', icon: '🎓', location: 'Hagfors 151 (Prof. Spicer)' },
+        { id: 14, title: 'Field Seminar - Class', time: '1:00 PM - 3:00 PM', date: '2026-09-12', cal: 'Academic', icon: '🎓', location: 'Hagfors 301' },
+        { id: 15, title: 'Diversity & Inequality - Class', time: '3:00 PM - 5:00 PM', date: '2026-09-12', cal: 'Academic', icon: '🎓', location: 'Hagfors 151' },
+        { id: 16, title: 'Resilience Survival Guide Due', time: '11:59 PM', date: '2026-09-12', cal: 'Academic', icon: '📝', location: 'Moodle Portal' },
+        { id: 17, title: 'CARE - In Person Practicum', time: '8:00 AM - 4:00 PM', date: '2026-09-14', cal: 'Work', icon: '💼', location: '8980 Hudson Blvd N, Lake Elmo' },
+        { id: 18, title: 'CARE - In Person Practicum', time: '8:00 AM - 4:00 PM', date: '2026-09-15', cal: 'Work', icon: '💼', location: '8980 Hudson Blvd N, Lake Elmo' },
+        { id: 19, title: 'Car Payment Due', time: 'All Day', date: '2026-09-15', cal: 'Bills', icon: '💳', location: 'Auto Bank' },
+        { id: 20, title: 'Role-Play Family & Client Overview', time: '11:59 PM', date: '2026-09-21', cal: 'Academic', icon: '📝', location: 'Moodle Portal' },
+        { id: 21, title: 'Final Learning Agreement Due', time: '11:59 PM', date: '2026-09-26', cal: 'Academic', icon: '🎓', location: 'Augsburg Moodle' }
+      ];
+
+      // Habits tailored to Aretta's real routines
+      const defaultHabits = [
+        { id: 1, name: 'Morning 5:00 AM Workout', days: [true, true, true, true, false, false, false], streak: 4, icon: '🏃‍♀️' },
+        { id: 2, name: 'Pack a Healthy Lunch for Tomorrow', days: [true, true, true, true, true, false, false], streak: 5, icon: '🥗' },
+        { id: 3, name: 'Playtime & Biscuits with Lemon & Stain', days: [true, true, true, true, true, true, true], streak: 21, icon: '🐾' },
+        { id: 4, name: 'Clinical Field Journal & Notes (20m)', days: [true, true, true, false, true, true, false], streak: 5, icon: '📖' },
+        { id: 5, name: 'Hydration Goal (2.5L Water)', days: [true, true, true, true, true, true, true], streak: 7, icon: '💧' },
+      ];
+
+      // Bookmarks connecting her specific tools
+      const defaultBookmarks = [
+        { id: 1, title: 'Augsburg Moodle LMS', url: 'https://moodle.augsburg.edu', category: 'MSW School', icon: '🎓' },
+        { id: 2, title: 'Augsburg University Mail', url: 'https://mail.google.com/a/augsburg.edu', category: 'School Inbox', icon: '💌' },
+        { id: 3, title: 'Google Calendar (All Feeds)', url: 'https://calendar.google.com', category: 'Schedule', icon: '📅' },
+        { id: 4, title: 'CARE Counseling Portal', url: 'https://care-clinics.com', category: 'Practicum', icon: '🏥' },
+        { id: 5, title: 'Google Drive Study Folder', url: 'https://drive.google.com/drive/folders/1mAhtQCwI3QNLQ_YShqiEvKOREpaO4RlR', category: 'Workspace', icon: '📁' },
+        { id: 6, title: 'Master Task Tracker Sheet', url: 'https://docs.google.com/spreadsheets/d/14KDi1BMtDPFdYsReC31bNAj-uU3CR0VvcUXVg1XR-lE/edit', category: 'Sheets', icon: '📊' },
+        { id: 7, title: 'Meals & Recipes Doc', url: 'https://docs.google.com/document/d/1xb7zWOFOnFzJV6143aZcW5toa-D2ubPCCAHOIvZUKKA/edit', category: 'Personal', icon: '🍲' },
+        { id: 8, title: 'Banfield Pet Health (Lemon & Stain)', url: 'https://www.banfield.com', category: 'Pets', icon: '🐱' },
+      ];
+
+      const [tasks, setTasks] = useStickyState(defaultTasks, 'cat_dash_tasks');
+      const [events, setEvents] = useStickyState(defaultEvents, 'cat_dash_events');
+      const [habits, setHabits] = useStickyState(defaultHabits, 'cat_dash_habits');
+      const [bookmarks, setBookmarks] = useStickyState(defaultBookmarks, 'cat_dash_bookmarks');
+      const [notes, setNotes] = useStickyState(
+        '# 🐾 MSW Field & Study Notes (Lemon & Stain Co.)\n' +
+        '- **Prof. Alicia Powers (AOCP w/ Individuals):** HC 151 Fridays 6-9 PM | nguyenp2@augsburg.edu\n' +
+        '- **Prof. Jasmyn Spicer (AOCP w/ Families):** HC 151 Saturdays 9 AM-12 PM | taylor14@augsburg.edu\n' +
+        '- **CARE Practicum:** 8980 Hudson Blvd N, Lake Elmo | Supervisor: Micalah\n' +
+        '- **Reminder:** Survival guide assignment allows zines, slides, or collages incorporating NASW Code of Ethics!\n' +
+        '- Lemon is sunbathing on the rug ☀️\n' +
+        '- Stain is keeping guard from the study desk 🐈‍⬛',
+        'cat_dash_notes'
+      );
+
+      // Function to dynamically sync from Google Sheet
+      const syncFromGoogleSheet = useCallback(async (manual = false) => {
+        if (!sheetUrl) return;
+        setSyncStatus('Syncing...');
+        try {
+          const res = await fetch(sheetUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const csvText = await res.text();
+          const rows = parseCSV(csvText);
+
+          // Locate header row containing 'Task Title'
+          let headerIdx = -1;
+          for (let i = 0; i < rows.length; i++) {
+            if (rows[i].some(cell => cell.trim().toLowerCase() === 'task title')) {
+              headerIdx = i;
+              break;
+            }
+          }
+
+          if (headerIdx === -1) {
+            throw new Error('Header row not found in CSV. Ensure tab is "Active Tasks & Deadlines".');
+          }
+
+          const headers = rows[headerIdx].map(h => h.trim().toLowerCase());
+          const titleCol = headers.indexOf('task title');
+          const catCol = headers.indexOf('category');
+          const prioCol = headers.indexOf('priority');
+          const dueCol = headers.indexOf('due date');
+          const srcCol = headers.indexOf('source');
+          const statusCol = headers.indexOf('status');
+          const notesCol = headers.indexOf('notes');
+
+          const parsedTasks = [];
+          for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            const title = titleCol !== -1 && row[titleCol] ? row[titleCol].trim() : '';
+            if (!title) continue;
+
+            const category = catCol !== -1 && row[catCol] ? row[catCol].trim() : 'Grad School';
+            let priorityRaw = prioCol !== -1 && row[prioCol] ? row[prioCol].trim() : 'Purr-fect';
+            let priority = 'Purr-fect';
+            if (/zoomies|high/i.test(priorityRaw)) priority = 'Zoomies';
+            else if (/catnap|low/i.test(priorityRaw)) priority = 'Catnap';
+
+            const due = dueCol !== -1 && row[dueCol] ? row[dueCol].trim() : '2026-09-04';
+            const source = srcCol !== -1 && row[srcCol] ? row[srcCol].trim() : 'Master Sheet';
+            const status = statusCol !== -1 && row[statusCol] ? row[statusCol].trim() : 'Pending';
+            const notes = notesCol !== -1 && row[notesCol] ? row[notesCol].trim() : '';
+
+            // Retain existing local completion status if matching title
+            const existing = tasks.find(t => t.title.toLowerCase() === title.toLowerCase());
+            const completed = existing ? existing.completed : status.toLowerCase() === 'completed';
+
+            parsedTasks.push({
+              id: existing ? existing.id : Date.now() + i,
+              title,
+              category,
+              priority,
+              due,
+              source,
+              completed,
+              notes,
+            });
+          }
+
+          if (parsedTasks.length > 0) {
+            setTasks(parsedTasks);
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setLastSyncTime(now);
+            setSyncStatus(`Live (${parsedTasks.length} tasks)`);
+            if (manual) alert(`Paws-itive! Successfully synced ${parsedTasks.length} tasks from Master Google Sheet.`);
+          } else {
+            setSyncStatus('No tasks found');
+          }
+        } catch (err) {
+          console.warn('Sheet sync notice:', err);
+          setSyncStatus('Local Mode (Click to connect)');
+          if (manual) {
+            alert('Notice: To sync live from GitHub Pages, publish your Google Sheet via: File → Share → Publish to web → Active Tasks & Deadlines (as CSV). Default tasks remain loaded.');
+          }
+        }
+      }, [sheetUrl, tasks, setTasks, setLastSyncTime]);
+
+      // Auto-sync on page load if enabled
+      useEffect(() => {
+        if (autoSync) {
+          syncFromGoogleSheet(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      useEffect(() => {
+        if (isStainMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }, [isStainMode]);
+
+      // Petting Triggers
+      const handlePetLemon = (e) => {
+        setLemonPets(prev => prev + 1);
+        const id = Date.now() + Math.random();
+        const rect = e.currentTarget.getBoundingClientRect();
+        setFloatingEffects(prev => [...prev, { id, x: rect.left + rect.width / 2, y: rect.top, emoji: '🍋💛🐾' }]);
+        setTimeout(() => setFloatingEffects(prev => prev.filter(p => p.id !== id)), 800);
+      };
+
+      const handlePetStain = (e) => {
+        setStainPets(prev => prev + 1);
+        const id = Date.now() + Math.random();
+        const rect = e.currentTarget.getBoundingClientRect();
+        setFloatingEffects(prev => [...prev, { id, x: rect.left + rect.width / 2, y: rect.top, emoji: '🐈‍⬛🖤✨' }]);
+        setTimeout(() => setFloatingEffects(prev => prev.filter(p => p.id !== id)), 800);
+      };
+
+      return (
+        <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+          {/* Floating Pet Animation Overlay */}
+          {floatingEffects.map(p => (
+            <span
+              key={p.id}
+              className="fixed pointer-events-none text-2xl z-50 animate-float"
+              style={{ left: p.x - 18, top: p.y - 10 }}
+            >
+              {p.emoji}
+            </span>
+          ))}
+
+          {/* Header */}
+          <header className="relative overflow-hidden bg-white/90 dark:bg-stone-900/90 backdrop-blur-md p-6 rounded-3xl border border-cat-200/80 dark:border-stone-800 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Duo Avatars */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePetLemon}
+                    title="Click to pet Lemon! 🍋"
+                    className="relative group w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-300 to-cat-500 flex items-center justify-center text-xl shadow-md shadow-cat-500/20 hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                  >
+                    🐱
+                    <span className="absolute -bottom-1 -right-1 text-[10px] bg-white dark:bg-stone-800 px-1 py-0.2 rounded-full font-bold text-amber-600 shadow border border-cat-100 dark:border-stone-700">
+                      🍋
+                    </span>
+                  </button>
+                  <button
+                    onClick={handlePetStain}
+                    title="Click to pet Stain! 🐈‍⬛"
+                    className="relative group w-12 h-12 rounded-2xl bg-gradient-to-br from-stone-700 to-stone-950 flex items-center justify-center text-xl shadow-md shadow-stone-900/40 hover:scale-110 active:scale-95 transition-all cursor-pointer border border-stone-600"
+                  >
+                    🐈‍⬛
+                    <span className="absolute -bottom-1 -right-1 text-[10px] bg-white dark:bg-stone-800 px-1 py-0.2 rounded-full font-bold text-stone-300 shadow border border-stone-700">
+                      🐾
+                    </span>
+                  </button>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold font-cozy tracking-tight">Stay paws-itive with Lemon & Stain ✨</h1>
+                  <p className="text-xs md:text-sm text-stone-500 dark:text-stone-400">
+                    {time.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })} • 
+                    <span className="text-amber-600 dark:text-amber-400 font-bold ml-1">Lemon: {lemonPets} pets 🍋</span> • 
+                    <span className="text-cat-600 dark:text-cat-400 font-bold ml-1">Stain: {stainPets} pets 🐾</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-2.5 self-end md:self-auto flex-wrap">
+                {/* Live Sync Badge */}
+                <button
+                  onClick={() => syncFromGoogleSheet(true)}
+                  title="Click to refresh tasks from Google Sheet"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-cat-50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700 text-xs font-semibold text-cat-800 dark:text-cat-300 hover:bg-cat-100 transition-all cursor-pointer"
+                >
+                  <span className={`w-2 h-2 rounded-full ${syncStatus.startsWith('Live') ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`}></span>
+                  <span>{syncStatus}</span>
+                  {lastSyncTime && <span className="text-[10px] text-stone-400 font-normal">({lastSyncTime})</span>}
+                </button>
+
+                {/* Tabs */}
+                <div className="flex bg-cat-100/60 dark:bg-stone-800 p-1 rounded-2xl">
+                  <button
+                    onClick={() => setActiveTab('overview')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'overview' ? 'bg-white dark:bg-stone-700 text-cat-700 dark:text-cat-300 shadow-sm' : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'}`}
+                  >
+                    🐾 Dashboard
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('calendar')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'calendar' ? 'bg-white dark:bg-stone-700 text-cat-700 dark:text-cat-300 shadow-sm' : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'}`}
+                  >
+                    📅 Master Schedule
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('study')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'study' ? 'bg-white dark:bg-stone-700 text-cat-700 dark:text-cat-300 shadow-sm' : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'}`}
+                  >
+                    📖 MSW Study Hub
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('integrations')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'integrations' ? 'bg-white dark:bg-stone-700 text-cat-700 dark:text-cat-300 shadow-sm' : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'}`}
+                  >
+                    🔗 Sources & Sync
+                  </button>
+                </div>
+
+                {/* Mode Switcher */}
+                <button
+                  onClick={() => setIsStainMode(!isStainMode)}
+                  className="px-3.5 py-1.5 rounded-2xl bg-cat-50 dark:bg-stone-800 border border-cat-100 dark:border-stone-700 text-xs font-bold text-stone-700 dark:text-stone-200 hover:bg-cat-100 dark:hover:bg-stone-700 transition-colors flex items-center gap-1.5 shadow-2xs"
+                  title="Switch between Lemon Mode (Light) and Stain Mode (Dark)"
+                >
+                  {isStainMode ? '🍋 Lemon Mode' : '🐾 Stain Mode'}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <CatTaskManager tasks={tasks} setTasks={setTasks} onSync={() => syncFromGoogleSheet(true)} />
+                <CatHabitTracker habits={habits} setHabits={setHabits} />
+                <CatBookmarks bookmarks={bookmarks} setBookmarks={setBookmarks} />
+              </div>
+              <div className="space-y-6">
+                <DuoCatCompanionCard
+                  lemonPets={lemonPets}
+                  stainPets={stainPets}
+                  onPetLemon={handlePetLemon}
+                  onPetStain={handlePetStain}
+                />
+                <CatSchedule events={events} setEvents={setEvents} onOpenCalendar={() => setActiveTab('calendar')} />
+                <MiniPurrModoro onOpenFull={() => setActiveTab('study')} />
+                <CatScratchpad notes={notes} setNotes={setNotes} />
+              </div>
+            </div>
+          )}
+
+          {/* Full Calendar Tab */}
+          {activeTab === 'calendar' && (
+            <FullCalendarView events={events} setEvents={setEvents} />
+          )}
+
+          {/* Study Suite */}
+          {activeTab === 'study' && (
+            <CatStudySuite notes={notes} setNotes={setNotes} />
+          )}
+
+          {/* Connectors */}
+          {activeTab === 'integrations' && (
+            <CatIntegrationsHub
+              tasks={tasks}
+              events={events}
+              sheetUrl={sheetUrl}
+              setSheetUrl={setSheetUrl}
+              onSyncNow={() => syncFromGoogleSheet(true)}
+              syncStatus={syncStatus}
+              lastSyncTime={lastSyncTime}
+              autoSync={autoSync}
+              setAutoSync={setAutoSync}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // --- Lemon & Stain's Duo Corner Component ---
+    function DuoCatCompanionCard({ lemonPets, stainPets, onPetLemon, onPetStain }) {
+      const lemonMoods = [
+        'Loafing peacefully in the warm sunbeam ☀️',
+        'Making soft biscuits on a fuzzy blanket 🍞',
+        'Purring like a quiet little engine 💛',
+        'Curled up in a tiny lemon ball 🍋'
+      ];
+      const stainMoods = [
+        'Zooming after invisible shadow creatures ⚡',
+        'Observing your study notes intently 🧐',
+        'Curled into a sleek void loaf 🐾',
+        'Napping right next to your laptop 💻'
+      ];
+      const currentLemonMood = lemonMoods[lemonPets % lemonMoods.length];
+      const currentStainMood = stainMoods[stainPets % stainMoods.length];
+
+      return (
+        <div className="bg-gradient-to-br from-cat-100 via-amber-50 to-orange-100 dark:from-stone-900 dark:via-stone-800 dark:to-cat-950 p-6 rounded-3xl border border-cat-200 dark:border-stone-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🐱🐈‍⬛</span>
+              <h3 className="font-bold text-sm font-cozy uppercase tracking-wider text-cat-800 dark:text-cat-300">
+                Lemon & Stain's Corner
+              </h3>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/80 dark:bg-stone-800 font-bold text-cat-700">
+              Total Pets: {lemonPets + stainPets}
+            </span>
+          </div>
+
+          {/* Cat 1: Lemon */}
+          <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-stone-800/80 border border-amber-200/80 dark:border-stone-700 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🍋🐱</span>
+                <h4 className="text-xs font-bold text-amber-800 dark:text-amber-300">Lemon (Calico Loaf)</h4>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-stone-700 text-amber-800 dark:text-amber-300">
+                {lemonPets} pets
+              </span>
+            </div>
+            <p className="text-xs text-stone-600 dark:text-stone-300">{currentLemonMood}</p>
+            <button
+              onClick={onPetLemon}
+              className="w-full py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-cat-500 hover:from-amber-500 hover:to-cat-600 active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              🐾 Pet Lemon 🍋
+            </button>
+          </div>
+
+          {/* Cat 2: Stain */}
+          <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-stone-800/80 border border-stone-300 dark:border-stone-700 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🐈‍⬛🐾</span>
+                <h4 className="text-xs font-bold text-stone-800 dark:text-stone-200">Stain (Midnight Void)</h4>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200">
+                {stainPets} pets
+              </span>
+            </div>
+            <p className="text-xs text-stone-600 dark:text-stone-300">{currentStainMood}</p>
+            <button
+              onClick={onPetStain}
+              className="w-full py-1.5 rounded-xl bg-gradient-to-r from-stone-700 to-stone-900 hover:from-stone-800 hover:to-black active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 border border-stone-600 cursor-pointer"
+            >
+              ✨ Pet Stain 🐾
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Full Interactive Calendar ---
+    function FullCalendarView({ events, setEvents }) {
+      const today = new Date();
+      const [viewDate, setViewDate] = useState(new Date(2026, 8, 3)); // September 2026
+      const [selectedDateStr, setSelectedDateStr] = useState('2026-09-03');
+      const [filterCategory, setFilterCategory] = useState('All');
+      const [showAddModal, setShowAddModal] = useState(false);
+      const [newTitle, setNewTitle] = useState('');
+      const [newTime, setNewTime] = useState('10:00 AM - 11:00 AM');
+      const [newCategory, setNewCategory] = useState('Academic');
+      const [newLocation, setNewLocation] = useState('');
+
+      const year = viewDate.getFullYear();
+      const month = viewDate.getMonth();
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDayIndex = new Date(year, month, 1).getDay();
+
+      const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+      const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+      const goToToday = () => {
+        const d = new Date(2026, 8, 3);
+        setViewDate(d);
+        setSelectedDateStr('2026-09-03');
+      };
+
+      const handleAddEvent = (e) => {
+        e.preventDefault();
+        if (!newTitle.trim()) return;
+        const ev = {
+          id: Date.now(),
+          title: newTitle.trim(),
+          time: newTime,
+          date: selectedDateStr,
+          cal: newCategory,
+          icon: newCategory === 'Academic' ? '🎓' : newCategory === 'Work' ? '💼' : newCategory === 'Bills' ? '💳' : newCategory === 'Wellness' ? '🧘‍♀️' : '📅',
+          location: newLocation || 'Campus / Online',
+        };
+        setEvents([ev, ...events]);
+        setNewTitle('');
+        setNewLocation('');
+        setShowAddModal(false);
+      };
+
+      const deleteEvent = (id) => {
+        setEvents(events.filter(e => e.id !== id));
+      };
+
+      const calendarDays = [];
+      for (let i = 0; i < firstDayIndex; i++) {
+        calendarDays.push({ blank: true, key: `blank-${i}` });
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        calendarDays.push({ dayNumber: d, dateStr, key: dateStr });
+      }
+
+      const filteredEvents = events.filter(e => {
+        if (filterCategory !== 'All' && e.cal !== filterCategory) return false;
+        return true;
+      });
+
+      const selectedDayEvents = filteredEvents.filter(e => e.date === selectedDateStr);
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/80 dark:border-stone-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📅</span>
+              <div>
+                <h2 className="text-2xl font-bold font-cozy">
+                  {monthNames[month]} {year}
+                </h2>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  Unified Master Schedule: Augsburg MSW • CARE Counseling • UHHC • Bills
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={prevMonth}
+                className="px-3 py-1.5 rounded-xl bg-cat-50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700 text-xs font-bold hover:bg-cat-100 cursor-pointer"
+              >
+                ◀ Prev
+              </button>
+              <button
+                onClick={goToToday}
+                className="px-3.5 py-1.5 rounded-xl bg-cat-100 dark:bg-stone-700 text-cat-700 dark:text-cat-300 text-xs font-bold hover:bg-cat-200 cursor-pointer"
+              >
+                Today (Sep 3)
+              </button>
+              <button
+                onClick={nextMonth}
+                className="px-3 py-1.5 rounded-xl bg-cat-50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700 text-xs font-bold hover:bg-cat-100 cursor-pointer"
+              >
+                Next ▶
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="ml-2 px-4 py-1.5 rounded-xl bg-cat-500 hover:bg-cat-600 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                + Schedule Event
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/80 dark:border-stone-800 shadow-sm space-y-4">
+              <div className="flex items-center gap-1.5 text-xs font-bold flex-wrap">
+                <span className="text-stone-400 text-[11px] mr-1">Filter Calendars:</span>
+                {['All', 'Academic', 'Work', 'Bills', 'Wellness', 'Personal'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setFilterCategory(cat)}
+                    className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${filterCategory === cat ? 'bg-cat-500 text-white shadow-sm' : 'bg-cat-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-cat-100'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <div className="grid grid-cols-7 gap-1 text-center font-bold text-xs text-stone-400 mb-2">
+                  <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {calendarDays.map(item => {
+                    if (item.blank) {
+                      return <div key={item.key} className="h-20 rounded-2xl bg-stone-50/50 dark:bg-stone-900/30 opacity-40"></div>;
+                    }
+                    const isSelected = item.dateStr === selectedDateStr;
+                    const dayEvents = filteredEvents.filter(e => e.date === item.dateStr);
+                    return (
+                      <div
+                        key={item.key}
+                        onClick={() => setSelectedDateStr(item.dateStr)}
+                        className={`h-20 p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isSelected ? 'bg-cat-100/80 dark:bg-cat-950/60 border-cat-400 dark:border-cat-500 shadow-sm ring-2 ring-cat-400' : 'bg-cat-50/30 dark:bg-stone-800/40 border-cat-100/80 dark:border-stone-800 hover:border-cat-300'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold ${isSelected ? 'text-cat-700 dark:text-cat-300 font-extrabold' : 'text-stone-600 dark:text-stone-300'}`}>
+                            {item.dayNumber}
+                          </span>
+                          {dayEvents.length > 0 && (
+                            <span className="w-2 h-2 rounded-full bg-cat-500 shadow-xs"></span>
+                          )}
+                        </div>
+                        <div className="space-y-0.5 overflow-hidden">
+                          {dayEvents.slice(0, 2).map(ev => (
+                            <div key={ev.id} className="text-[9px] truncate px-1 py-0.2 rounded bg-white/90 dark:bg-stone-900 text-cat-800 dark:text-cat-200 font-medium">
+                              {ev.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 2 && (
+                            <span className="text-[8px] text-stone-400">+{dayEvents.length - 2} more</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/80 dark:border-stone-800 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold font-cozy">Events on Selected Date</h3>
+                    <p className="text-xs text-cat-600 dark:text-cat-400 font-semibold">📅 {selectedDateStr}</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="text-xs font-bold px-3 py-1 rounded-xl bg-cat-100 dark:bg-stone-800 text-cat-700 dark:text-cat-300 hover:bg-cat-200 cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                <div className="space-y-2.5 max-h-96 overflow-y-auto custom-scrollbar pr-1">
+                  {selectedDayEvents.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-stone-400">
+                      <p className="text-2xl mb-1">🐾</p>
+                      <p>No events scheduled for this day.</p>
+                    </div>
+                  ) : (
+                    selectedDayEvents.map(ev => (
+                      <div key={ev.id} className="p-3.5 rounded-2xl bg-cat-50/50 dark:bg-stone-800/40 border-l-4 border-l-cat-500 border border-cat-100 dark:border-stone-800 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs md:text-sm font-bold">{ev.title}</h4>
+                          <button
+                            onClick={() => deleteEvent(ev.id)}
+                            className="text-stone-400 hover:text-rose-500 text-xs px-1 cursor-pointer"
+                            title="Delete event"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-stone-500 dark:text-stone-400">⏰ {ev.time}</p>
+                        {ev.location && (
+                          <p className="text-[10px] text-stone-400">📍 {ev.location}</p>
+                        )}
+                        <span className="inline-block mt-1 text-[9px] px-2 py-0.5 rounded-full bg-white dark:bg-stone-700 font-bold text-cat-700 dark:text-cat-300">
+                          {ev.cal}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-cat-500/10 to-amber-500/10 border border-cat-200 dark:border-stone-800 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-cat-800 dark:text-cat-300">
+                  <span>🔄</span> Connected Master Calendars
+                </div>
+                <ul className="text-stone-500 dark:text-stone-400 text-[11px] space-y-1 list-disc list-inside">
+                  <li>Augsburg MSW (Clinical Practice, Seminars, Forums)</li>
+                  <li>CARE Counseling (Practicum & Supervision)</li>
+                  <li>Universal Home Health Care (UHHC Shifts & Payroll)</li>
+                  <li>Personal Bills & Pet Care (Banfield Vet for Lemon & Stain)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {showAddModal && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+              <div className="bg-white dark:bg-stone-900 w-full max-w-md p-6 rounded-3xl border border-cat-200 dark:border-stone-800 shadow-xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold font-cozy">🐾 Schedule New Event</h3>
+                  <button onClick={() => setShowAddModal(false)} className="text-stone-400 hover:text-stone-600 cursor-pointer">✕</button>
+                </div>
+                <form onSubmit={handleAddEvent} className="space-y-3 text-xs">
+                  <div>
+                    <label className="font-bold text-stone-600 dark:text-stone-300 block mb-1">Event Title</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Field Practicum / Supervision"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-cat-50/50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-stone-600 dark:text-stone-300 block mb-1">Date</label>
+                      <input
+                        type="date"
+                        value={selectedDateStr}
+                        onChange={(e) => setSelectedDateStr(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-cat-50/50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-stone-600 dark:text-stone-300 block mb-1">Time</label>
+                      <input
+                        type="text"
+                        value={newTime}
+                        onChange={(e) => setNewTime(e.target.value)}
+                        placeholder="e.g. 10:00 AM - 11:30 AM"
+                        className="w-full p-2.5 rounded-xl bg-cat-50/50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-stone-600 dark:text-stone-300 block mb-1">Calendar</label>
+                      <select
+                        value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-cat-50/50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700"
+                      >
+                        <option value="Academic">🎓 Academic (MSW)</option>
+                        <option value="Work">💼 Work / Practicum</option>
+                        <option value="Bills">💳 Bills</option>
+                        <option value="Wellness">🧘‍♀️ Wellness</option>
+                        <option value="Personal">🏡 Personal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-bold text-stone-600 dark:text-stone-300 block mb-1">Location / Link</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Hagfors 151 or Lake Elmo"
+                        value={newLocation}
+                        onChange={(e) => setNewLocation(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-cat-50/50 dark:bg-stone-800 border border-cat-200 dark:border-stone-700"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModal(false)}
+                      className="px-4 py-2 rounded-xl bg-cat-50 dark:bg-stone-800 font-bold hover:bg-cat-100 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-cat-500 hover:bg-cat-600 text-white font-bold cursor-pointer"
+                    >
+                      Save Event 🐾
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- Task Manager ---
+    function CatTaskManager({ tasks, setTasks, onSync }) {
+      const [filter, setFilter] = useState('All');
+      const [newTitle, setNewTitle] = useState('');
+      const [newCategory, setNewCategory] = useState('Grad School');
+      const [newPriority, setNewPriority] = useState('Purr-fect');
+      const [newDue, setNewDue] = useState('2026-09-04');
+      const [isAdding, setIsAdding] = useState(false);
+
+      const addTask = (e) => {
+        e.preventDefault();
+        if (!newTitle.trim()) return;
+        const newTask = {
+          id: Date.now(),
+          title: newTitle.trim(),
+          category: newCategory,
+          priority: newPriority,
+          due: newDue || '2026-09-04',
+          source: 'User Entered',
+          completed: false,
+          notes: '',
+        };
+        setTasks([newTask, ...tasks]);
+        setNewTitle('');
+        setIsAdding(false);
+      };
+
+      const toggleTask = (id) => {
+        setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+      };
+
+      const deleteTask = (id) => {
+        setTasks(tasks.filter(t => t.id !== id));
+      };
+
+      const filteredTasks = tasks.filter(t => {
+        if (filter === 'All') return true;
+        if (filter === 'Active') return !t.completed;
+        if (filter === 'Completed') return t.completed;
+        return t.category === filter;
+      });
+
+      const priorityBadge = (p) => {
+        if (p === 'Zoomies' || p === 'High') {
+          return 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900';
+        }
+        if (p === 'Purr-fect' || p === 'Medium') {
+          return 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900';
+        }
+        return 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900';
+      };
+
+      return (
+        <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/70 dark:border-stone-800 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📋</span>
+              <h2 className="text-lg font-bold font-cozy">Tasks & Clinical Deadlines</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cat-100 dark:bg-stone-800 text-cat-700 dark:text-cat-300">
+                {tasks.filter(t => !t.completed).length} pending
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onSync}
+                title="Pull latest tasks from Google Sheet"
+                className="text-xs font-bold px-3 py-1.5 rounded-2xl bg-cat-50 dark:bg-stone-800 hover:bg-cat-100 border border-cat-200 dark:border-stone-700 text-cat-700 dark:text-cat-300 transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <span>🔄</span> Sync Sheet
+              </button>
+              <button
+                onClick={() => setIsAdding(!isAdding)}
+                className="text-xs font-bold px-3.5 py-1.5 rounded-2xl bg-cat-500 hover:bg-cat-600 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                {isAdding ? '✕ Cancel' : '🐾 Add Task'}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 mb-4 text-xs font-bold">
+            {['All', 'Active', 'Completed', 'Grad School', 'Work', 'Bills', 'Personal'].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilter(cat)}
+                className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${filter === cat ? 'bg-cat-500 text-white shadow-sm' : 'bg-cat-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-cat-100 dark:hover:bg-stone-700'}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {isAdding && (
+            <form onSubmit={addTask} className="mb-4 p-4 rounded-2xl bg-cat-50/70 dark:bg-stone-800/60 border border-cat-200 dark:border-stone-700 space-y-3">
+              <input
+                type="text"
+                placeholder="What needs to get done?"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="w-full text-sm px-3 py-2 rounded-xl bg-white dark:bg-stone-900 border border-cat-200 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-cat-400"
+                autoFocus
+              />
+              <div className="flex flex-wrap gap-2 text-xs">
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-stone-900 border border-cat-200 dark:border-stone-700 font-medium"
+                >
+                  <option value="Grad School">🎓 Grad School (MSW)</option>
+                  <option value="Work">💼 Work / Practicum</option>
+                  <option value="Bills">💳 Bills</option>
+                  <option value="Personal">🏡 Personal</option>
+                </select>
+                <select
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-stone-900 border border-cat-200 dark:border-stone-700 font-medium"
+                >
+                  <option value="Zoomies">⚡ Zoomies (High)</option>
+                  <option value="Purr-fect">🐾 Purr-fect (Medium)</option>
+                  <option value="Catnap">💤 Catnap (Low)</option>
+                </select>
+                <input
+                  type="date"
+                  value={newDue}
+                  onChange={(e) => setNewDue(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-stone-900 border border-cat-200 dark:border-stone-700"
+                />
+                <button
+                  type="submit"
+                  className="ml-auto px-4 py-1.5 rounded-xl bg-cat-500 hover:bg-cat-600 text-white font-bold cursor-pointer"
+                >
+                  Save Task 🐾
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-1">
+            {filteredTasks.length === 0 ? (
+              <div className="text-center py-8 text-xs text-stone-400">
+                <p className="text-2xl mb-1">😺</p>
+                <p>All caught up! Time for a catnap with Lemon & Stain.</p>
+              </div>
+            ) : (
+              filteredTasks.map(t => (
+                <div
+                  key={t.id}
+                  className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${t.completed ? 'bg-cat-50/40 dark:bg-stone-900/40 border-stone-100 dark:border-stone-800 opacity-60' : 'bg-white dark:bg-stone-800/70 border-cat-100 dark:border-stone-700 hover:border-cat-300 dark:hover:border-stone-600'}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      onClick={() => toggleTask(t.id)}
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center text-xs transition-all cursor-pointer ${t.completed ? 'bg-cat-500 text-white' : 'border-2 border-cat-300 dark:border-stone-600 hover:border-cat-500'}`}
+                    >
+                      {t.completed ? '🐾' : ''}
+                    </button>
+                    <div className="min-w-0">
+                      <p className={`text-xs md:text-sm font-semibold truncate ${t.completed ? 'line-through text-stone-400' : ''}`}>
+                        {t.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-stone-400">📅 {t.due}</span>
+                        <span className="text-[10px] text-cat-600 dark:text-cat-400 font-medium">• {t.category}</span>
+                        {t.source && <span className="text-[9px] px-1.5 py-0.2 rounded bg-cat-50 dark:bg-stone-800 text-stone-500">🔗 {t.source}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2">
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-lg border font-bold ${priorityBadge(t.priority)}`}>
+                      {t.priority}
+                    </span>
+                    <button
+                      onClick={() => deleteTask(t.id)}
+                      className="text-stone-400 hover:text-rose-500 text-xs px-1 cursor-pointer"
+                      title="Delete"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // --- Habit Tracker ---
+    function CatHabitTracker({ habits, setHabits }) {
+      const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+      const toggleDay = (habitId, dayIndex) => {
+        setHabits(habits.map(h => {
+          if (h.id === habitId) {
+            const newDays = [...h.days];
+            newDays[dayIndex] = !newDays[dayIndex];
+            const newStreak = newDays.filter(Boolean).length;
+            return { ...h, days: newDays, streak: newStreak };
+          }
+          return h;
+        }));
+      };
+
+      const addHabit = () => {
+        const name = prompt('Habit name:');
+        if (!name) return;
+        setHabits([...habits, { id: Date.now(), name, icon: '🐾', days: [false, false, false, false, false, false, false], streak: 0 }]);
+      };
+
+      return (
+        <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/70 dark:border-stone-800 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🐾</span>
+              <h2 className="text-lg font-bold font-cozy">Daily Paw-gress Habits</h2>
+            </div>
+            <button onClick={addHabit} className="text-xs font-bold text-cat-600 dark:text-cat-400 hover:underline cursor-pointer">
+              + New Habit
+            </button>
+          </div>
+          <div className="space-y-3">
+            {habits.map(h => (
+              <div key={h.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-2xl bg-cat-50/50 dark:bg-stone-800/40 border border-cat-100 dark:border-stone-800 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-lg">{h.icon || '🐾'}</span>
+                  <div>
+                    <p className="text-xs sm:text-sm font-bold truncate">{h.name}</p>
+                    <p className="text-[10px] text-cat-600 dark:text-cat-400 font-semibold">🔥 {h.streak} day streak</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                  {h.days.map((done, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => toggleDay(h.id, idx)}
+                      className={`w-8 h-8 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center cursor-pointer ${done ? 'bg-gradient-to-tr from-cat-500 to-amber-400 text-white shadow-sm shadow-cat-500/30 scale-105' : 'bg-white dark:bg-stone-700 text-stone-400 hover:bg-cat-100'}`}
+                      title={`${daysOfWeek[idx]}: ${done ? 'Completed' : 'Incomplete'}`}
+                    >
+                      {done ? '🐾' : daysOfWeek[idx]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // --- Bookmarks ---
+    function CatBookmarks({ bookmarks, setBookmarks }) {
+      const addBookmark = () => {
+        const title = prompt('Portal / Bookmark Title:');
+        const url = prompt('URL:');
+        if (!title || !url) return;
+        setBookmarks([...bookmarks, { id: Date.now(), title, url, category: 'Custom', icon: '🔗' }]);
+      };
+
+      return (
+        <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/70 dark:border-stone-800 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🌟</span>
+              <h2 className="text-lg font-bold font-cozy">Quick Feline Launchpad</h2>
+            </div>
+            <button onClick={addBookmark} className="text-xs font-bold text-cat-600 dark:text-cat-400 hover:underline cursor-pointer">
+              + Add Link
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {bookmarks.map(b => (
+              <a
+                key={b.id}
+                href={b.url}
+                target="_blank"
+                rel="noreferrer"
+                className="group flex flex-col p-3.5 rounded-2xl bg-cat-50/50 dark:bg-stone-800/40 border border-cat-100 dark:border-stone-800 hover:border-cat-400 dark:hover:border-cat-500 hover:shadow-md transition-all"
+              >
+                <span className="text-xl mb-1">{b.icon || '🔗'}</span>
+                <span className="text-xs font-bold group-hover:text-cat-600 dark:group-hover:text-cat-400 truncate">{b.title}</span>
+                <span className="text-[10px] text-stone-400 truncate">{b.category}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // --- Mini Schedule Widget ---
+    function CatSchedule({ events, setEvents, onOpenCalendar }) {
+      return (
+        <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/70 dark:border-stone-800 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📅</span>
+              <h2 className="text-lg font-bold font-cozy">Upcoming Commitments</h2>
+            </div>
+            <button onClick={onOpenCalendar} className="text-xs font-bold text-cat-600 dark:text-cat-400 hover:underline cursor-pointer">
+              Full View →
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {events.slice(0, 4).map(ev => (
+              <div key={ev.id} className="p-3 rounded-2xl bg-cat-50/50 dark:bg-stone-800/40 border-l-4 border-l-cat-500 border border-cat-100 dark:border-stone-800 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs md:text-sm font-bold">{ev.title}</h4>
+                  <p className="text-[10px] text-stone-400">⏰ {ev.time} • <span className="text-cat-600 dark:text-cat-400 font-semibold">{ev.date}</span></p>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold shadow-2xs">
+                  {ev.cal}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // --- Mini Purr-modoro ---
+    function MiniPurrModoro({ onOpenFull }) {
+      const [seconds, setSeconds] = useState(25 * 60);
+      const [isActive, setIsActive] = useState(false);
+
+      useEffect(() => {
+        let timer = null;
+        if (isActive && seconds > 0) {
+          timer = setInterval(() => setSeconds(s => s - 1), 1000);
+        } else if (seconds === 0) {
+          setIsActive(false);
+          alert('Meow! Focus session complete. Lemon & Stain approve! 🐾');
+        }
+        return () => clearInterval(timer);
+      }, [isActive, seconds]);
+
+      const formatTime = (s) => {
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+      };
+
+      return (
+        <div className="bg-gradient-to-br from-cat-500 to-amber-600 text-white p-6 rounded-3xl shadow-md space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm font-cozy">🐾 Purr-modoro Focus</h3>
+            <button onClick={onOpenFull} className="text-xs underline text-cat-100 hover:text-white cursor-pointer">
+              Full Hub →
+            </button>
+          </div>
+          <div className="text-center py-1">
+            <div className="text-4xl font-black font-mono tracking-tight">{formatTime(seconds)}</div>
+            <p className="text-xs text-cat-100 mt-1">25m Sprint with Lemon & Stain</p>
+          </div>
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={() => setIsActive(!isActive)}
+              className="px-4 py-1.5 rounded-xl bg-white text-cat-700 font-extrabold text-xs hover:bg-cat-50 shadow-sm transition-all cursor-pointer"
+            >
+              {isActive ? 'Pause' : 'Start Focus 🐾'}
+            </button>
+            <button
+              onClick={() => { setIsActive(false); setSeconds(25 * 60); }}
+              className="px-3 py-1.5 rounded-xl bg-cat-700/50 text-white font-medium text-xs hover:bg-cat-700 cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Scratchpad ---
+    function CatScratchpad({ notes, setNotes }) {
+      return (
+        <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200/70 dark:border-stone-800 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg">📝</span>
+            <h2 className="text-lg font-bold font-cozy">Clinical & Study Scratchpad</h2>
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={6}
+            placeholder="Jot down quick thoughts, paper links, or study notes..."
+            className="w-full text-xs p-3.5 rounded-2xl bg-cat-50/50 dark:bg-stone-800/40 border border-cat-200 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-cat-400 font-mono leading-relaxed"
+          />
+        </div>
+      );
+    }
+
+    // --- Full Study Suite ---
+    function CatStudySuite({ notes, setNotes }) {
+      const [seconds, setSeconds] = useState(25 * 60);
+      const [mode, setMode] = useState('focus');
+      const [isRunning, setIsRunning] = useState(false);
+      const [pawsEarned, setPawsEarned] = useState(0);
+
+      const [assignments, setAssignments] = useStickyState([
+        { id: 1, course: 'AOCP: Individuals', prof: 'Alicia Nguyen Powers, MSW, LICSW', name: 'Resilience Survival Guide Handbook', due: '2026-09-12', weight: '20%', status: 'In Progress' },
+        { id: 2, course: 'AOCP: Families', prof: 'Jasmyn Spicer, MSW, LICSW', name: 'Role-Play Family & Client Overview', due: '2026-09-21', weight: '25%', status: 'Not Started' },
+        { id: 3, course: 'Field Seminar', prof: 'Augsburg MSW Faculty', name: 'Final Field Learning Agreement', due: '2026-09-26', weight: 'Pass/Fail', status: 'In Progress' },
+        { id: 4, course: 'Diversity & Inequality', prof: 'Augsburg MSW Faculty', name: 'In Treatment Reflection & Forum 1', due: '2026-09-11', weight: '15%', status: 'Not Started' },
+      ], 'cat_dash_assignments');
+
+      useEffect(() => {
+        let timer = null;
+        if (isRunning && seconds > 0) {
+          timer = setInterval(() => setSeconds(s => s - 1), 1000);
+        } else if (seconds === 0) {
+          setIsRunning(false);
+          if (mode === 'focus') setPawsEarned(p => p + 1);
+          alert(`${mode === 'focus' ? 'Focus block' : 'Catnap'} finished! Meow! 🐾`);
+        }
+        return () => clearInterval(timer);
+      }, [isRunning, seconds, mode]);
+
+      const setTimerMode = (newMode, minutes) => {
+        setMode(newMode);
+        setIsRunning(false);
+        setSeconds(minutes * 60);
+      };
+
+      const formatTime = (s) => {
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200 dark:border-stone-800 shadow-sm flex flex-col items-center text-center">
+              <h2 className="text-xl font-bold font-cozy mb-4">🐾 Purr-modoro Timer</h2>
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => setTimerMode('focus', 25)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl cursor-pointer ${mode === 'focus' ? 'bg-cat-500 text-white' : 'bg-cat-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}
+                >
+                  Focus (25m)
+                </button>
+                <button
+                  onClick={() => setTimerMode('short', 5)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl cursor-pointer ${mode === 'short' ? 'bg-cat-500 text-white' : 'bg-cat-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}
+                >
+                  Cat Nap (5m)
+                </button>
+                <button
+                  onClick={() => setTimerMode('long', 15)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl cursor-pointer ${mode === 'long' ? 'bg-cat-500 text-white' : 'bg-cat-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}
+                >
+                  Long Nap (15m)
+                </button>
+              </div>
+              <div className="text-6xl font-black font-mono tracking-tight text-cat-600 dark:text-cat-400 mb-3">
+                {formatTime(seconds)}
+              </div>
+              <p className="text-xs text-stone-400 mb-6">
+                Paws earned today: <span className="font-bold text-cat-600 dark:text-cat-400">{pawsEarned} 🐾</span>
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsRunning(!isRunning)}
+                  className="px-6 py-2.5 rounded-xl bg-cat-500 hover:bg-cat-600 text-white font-bold text-sm shadow-sm transition-all cursor-pointer"
+                >
+                  {isRunning ? 'Pause' : 'Start Focus Sprint'}
+                </button>
+                <button
+                  onClick={() => { setIsRunning(false); setSeconds(25 * 60); }}
+                  className="px-4 py-2.5 rounded-xl bg-cat-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 text-sm font-bold hover:bg-cat-100 cursor-pointer"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200 dark:border-stone-800 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold font-cozy">Augsburg MSW Course Deadlines</h2>
+                  <p className="text-xs text-stone-400">Clinical Practicum & Academic Milestones</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const name = prompt('Assignment Name:');
+                    const course = prompt('Course Code (e.g. AOCP Individuals):');
+                    const prof = prompt('Professor Name:');
+                    if (name && course) {
+                      setAssignments([...assignments, { id: Date.now(), course, prof: prof || 'Faculty', name, due: 'Next Week', weight: '20%', status: 'Not Started' }]);
+                    }
+                  }}
+                  className="text-xs font-bold text-cat-600 dark:text-cat-400 hover:underline cursor-pointer"
+                >
+                  + Add Assignment
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-cat-100 dark:border-stone-800 text-stone-400 font-bold">
+                      <th className="pb-2">Course</th>
+                      <th className="pb-2">Professor</th>
+                      <th className="pb-2">Assignment</th>
+                      <th className="pb-2">Due Date</th>
+                      <th className="pb-2">Weight</th>
+                      <th className="pb-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-cat-50 dark:divide-stone-800">
+                    {assignments.map(a => (
+                      <tr key={a.id} className="hover:bg-cat-50/50 dark:hover:bg-stone-800/30">
+                        <td className="py-3 font-bold text-cat-600 dark:text-cat-400">{a.course}</td>
+                        <td className="py-3 text-stone-500 dark:text-stone-400">{a.prof}</td>
+                        <td className="py-3 font-semibold">{a.name}</td>
+                        <td className="py-3 text-stone-400">{a.due}</td>
+                        <td className="py-3 font-medium">{a.weight}</td>
+                        <td className="py-3">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400">
+                            {a.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200 dark:border-stone-800 shadow-sm">
+            <h2 className="text-lg font-bold font-cozy mb-2">Grad School Clinical Scratchpad</h2>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={8}
+              className="w-full text-xs p-4 rounded-2xl bg-cat-50/40 dark:bg-stone-800/40 border border-cat-200 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-cat-400 font-mono leading-relaxed"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // --- Integrations Hub ---
+    function CatIntegrationsHub({ tasks, events, sheetUrl, setSheetUrl, onSyncNow, syncStatus, lastSyncTime, autoSync, setAutoSync }) {
+      const integrations = [
+        { name: 'Master Task Tracker Google Sheet', desc: 'Live dynamic sync with the sheet updated by Gemini Spark background runs', status: syncStatus, icon: '📊' },
+        { name: 'Augsburg MSW Moodle & Calendar', desc: 'Clinical courses, seminars, and forum assignment deadlines', status: 'Active (Augsburg Feed)', icon: '🎓' },
+        { name: 'CARE Counseling Practicum', desc: 'Orientation, Mendota Heights training, supervision w/ Micalah', status: 'Active (CARE Feed)', icon: '🏥' },
+        { name: 'Universal Home Health Care (UHHC)', desc: 'Bi-weekly payroll milestones and clinical field shifts', status: 'Active (UHHC Feed)', icon: '💼' },
+        { name: 'Personal & Pet Wellness Tracker', desc: 'Rent, Banfield pet hospital care for Lemon & Stain, bills', status: 'Active (Bills Feed)', icon: '🐾' },
+      ];
+
+      return (
+        <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-cat-200 dark:border-stone-800 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold font-cozy">Live Dynamic Sync & Feed Sources</h2>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Connected to your Master Google Sheet and personal calendars for real-time updates on GitHub Pages.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onSyncNow}
+                className="px-4 py-2 rounded-2xl bg-cat-500 hover:bg-cat-600 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>🔄</span> Sync from Google Sheet Now
+              </button>
+            </div>
+          </div>
+
+          {/* Dynamic Sheet Sync Box */}
+          <div className="p-5 rounded-3xl bg-cat-50/60 dark:bg-stone-800/50 border border-cat-200 dark:border-stone-700 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📊</span>
+                <div>
+                  <h3 className="text-sm font-bold text-cat-800 dark:text-cat-300">Google Sheet Dynamic Feed Connection</h3>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    Status: <span className="font-bold text-cat-600 dark:text-cat-400">{syncStatus}</span> {lastSyncTime && `• Last Synced: ${lastSyncTime}`}
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-semibold text-stone-600 dark:text-stone-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoSync}
+                  onChange={(e) => setAutoSync(e.target.checked)}
+                  className="rounded text-cat-500 focus:ring-cat-400"
+                />
+                Auto-sync on page load
+              </label>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-stone-600 dark:text-stone-400 block mb-1">
+                Connected Sheet CSV / Web Feed URL:
+              </label>
+              <input
+                type="text"
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                placeholder="Google Sheet CSV Export or Published Web URL"
+                className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-stone-900 border border-cat-200 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-cat-400 font-mono"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 pt-1 flex-wrap gap-2">
+              <span>
+                💡 Target: <strong>Personal Dashboard - Master Task Tracker</strong>
+              </span>
+              <a
+                href="https://docs.google.com/spreadsheets/d/14KDi1BMtDPFdYsReC31bNAj-uU3CR0VvcUXVg1XR-lE/edit"
+                target="_blank"
+                rel="noreferrer"
+                className="text-cat-600 dark:text-cat-400 font-bold hover:underline flex items-center gap-1"
+              >
+                Open Google Sheet in Drive →
+              </a>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {integrations.map((item, idx) => (
+              <div key={idx} className="p-4 rounded-2xl border border-cat-100 dark:border-stone-800 bg-cat-50/40 dark:bg-stone-800/30 flex items-start gap-4">
+                <div className="text-2xl p-2 rounded-2xl bg-white dark:bg-stone-800 shadow-sm">{item.icon}</div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold">{item.name}</h4>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">
+                      {item.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300">
+            🐾 <strong>Dynamic GitHub Pages Note:</strong> When Gemini Spark processes emails in the background, it adds the new tasks directly to your Master Google Sheet. Whenever you open or refresh your GitHub Pages dashboard, it fetches the newest tasks automatically!
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
