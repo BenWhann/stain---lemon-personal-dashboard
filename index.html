@@ -105,10 +105,10 @@
       const [floatingEffects, setFloatingEffects] = useState([]);
 
       // Dynamic Google Sheet Sync Configuration
-      const SPREADSHEET_ID = '14KDi1BMtDPFdYsReC31bNAj-uU3CR0VvcUXVg1XR-lE';
+      const PUBLISHED_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLEXf7tzlK1byIE6qXmD5aFbjBFxfNX5tJJj8AeXqlZS3bAgIAG4O0s_OLwsW6uBG2v7WwR2NO7Z_K/pub?gid=0&single=true&output=csv";
       const [sheetUrl, setSheetUrl] = useStickyState(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Active%20Tasks%20%26%20Deadlines`,
-        'cat_dash_sheet_url'
+        PUBLISHED_SHEET_CSV,
+        "cat_dash_sheet_url_v2"
       );
       const [syncStatus, setSyncStatus] = useState('Idle');
       const [lastSyncTime, setLastSyncTime] = useStickyState(null, 'cat_dash_last_sync_time');
