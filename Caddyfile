@@ -1,0 +1,76 @@
+{$DOMAIN:localhost} {
+    # Encoding compression for high performance on low-bandwidth/low-memory VPS
+    encode gzip zstd
+
+    # Root directory for static frontend assets
+    root * /usr/share/caddy
+
+    # Security Headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        -Server
+    }
+
+    # Aggressive caching for hashed production assets
+    @static {
+        path /assets/*
+        path *.ico *.png *.svg *.webp *.woff2
+    }
+    header @static {
+        Cache-Control "public, max-age=31536000, immutable"
+    }
+
+    # Never cache index.html or service worker to guarantee immediate updates
+    @nocache {
+        path /
+        path /index.html
+    }
+    header @nocache {
+        Cache-Control "no-cache, no-store, must-revalidate"
+        Pragma "no-cache"
+        Expires "0"
+    }
+
+    # Proxy API endpoints to the FastAPI backend service
+    handle /api/* {
+        reverse_proxy api:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # Timeouts for low-resource environments
+            transport http {
+                response_header_timeout 30s
+                read_timeout 60s
+            }
+        }
+    }
+
+    # OpenAPI interactive documentation proxying
+    handle /docs* {
+        reverse_proxy api:8000
+    }
+    handle /redoc* {
+        reverse_proxy api:8000
+    }
+    handle /openapi.json {
+        reverse_proxy api:8000
+    }
+
+    # SPA routing fallback: serve index.html for unknown paths
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+
+    # Structured logging
+    log {
+        output stdout
+        format json
+    }
+}

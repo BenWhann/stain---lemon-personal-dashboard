@@ -1,0 +1,68 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lemon-stain-api
+    restart: unless-stopped
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - DATABASE_URL=sqlite:////data/dashboard.db
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,https://localhost}
+      - DEFAULT_SHEET_URL=${DEFAULT_SHEET_URL}
+      - AUTO_SYNC_ENABLED=${AUTO_SYNC_ENABLED:-true}
+    volumes:
+      - ./data:/data
+    networks:
+      - dashboard-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 64M
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/api/health\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lemon-stain-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
+networks:
+  dashboard-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
