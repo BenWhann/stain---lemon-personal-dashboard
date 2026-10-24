@@ -1,0 +1,4 @@
+# Shell scripts run on the Linux VPS: keep LF endings even in Windows checkouts
+*.sh text eol=lf
+# Windows helpers keep CRLF
+*.bat text eol=crlf
