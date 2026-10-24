@@ -5,6 +5,8 @@ from .bookmarks import router as bookmarks_router
 from .counters import router as counters_router
 from .notes import router as notes_router
 from .sync import router as sync_router
+from .focus import router as focus_router
+from .auth import router as auth_router
 
 __all__ = [
     "tasks_router",
@@ -13,5 +15,7 @@ __all__ = [
     "bookmarks_router",
     "counters_router",
     "notes_router",
-    "sync_router"
+    "sync_router",
+    "focus_router",
+    "auth_router",
 ]

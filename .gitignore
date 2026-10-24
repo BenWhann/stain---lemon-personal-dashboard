@@ -1,0 +1,21 @@
+# dependencies and builds
+node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+backend/venv/
+.venv/
+
+# local data and secrets
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
+backups/
+
+# editor/OS
+.DS_Store
+.vscode/
+.idea/

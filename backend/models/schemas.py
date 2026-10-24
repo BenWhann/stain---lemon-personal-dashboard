@@ -1,101 +1,201 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+
+DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+
+Priority = Literal["Zoomies", "Purr-fect", "Catnap"]
+TaskStatus = Literal["Pending", "In Progress", "Completed"]
+
+
+def _blank_to_none(value):
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+# --- Subtasks ---
+class SubtaskCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+
+
+class SubtaskUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    done: Optional[bool] = None
+    position: Optional[int] = None
+
+
+class SubtaskResponse(BaseModel):
+    id: int
+    task_id: int
+    title: str
+    done: bool
+    position: int
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 # --- Tasks ---
 class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    category: str = Field(default="Grad School")
-    priority: str = Field(default="Purr-fect")  # Zoomies, Purr-fect, Catnap
-    due_date: Optional[str] = Field(default="2026-09-04")
-    source: Optional[str] = Field(default="Manual")
-    status: Optional[str] = Field(default="Pending")
-    completed: bool = Field(default=False)
-    notes: Optional[str] = Field(default="")
+    category: str = Field(default="Grad School", max_length=100)
+    priority: Priority = "Purr-fect"
+    due_date: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+    source: Optional[str] = Field(default="Manual", max_length=100)
+    status: TaskStatus = "Pending"
+    completed: bool = False
+    notes: Optional[str] = Field(default="", max_length=20000)
+
+    _blank_due = field_validator("due_date", mode="before")(_blank_to_none)
+
 
 class TaskCreate(TaskBase):
-    pass
+    subtasks: List[str] = Field(default_factory=list)
+
 
 class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    category: Optional[str] = None
-    priority: Optional[str] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    category: Optional[str] = Field(default=None, max_length=100)
+    priority: Optional[Priority] = None
+    due_date: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+    source: Optional[str] = Field(default=None, max_length=100)
+    status: Optional[TaskStatus] = None
+    completed: Optional[bool] = None
+    notes: Optional[str] = Field(default=None, max_length=20000)
+    position: Optional[int] = None
+
+    _blank_due = field_validator("due_date", mode="before")(_blank_to_none)
+
+
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    category: str
+    priority: str
     due_date: Optional[str] = None
     source: Optional[str] = None
-    status: Optional[str] = None
-    completed: Optional[bool] = None
-    notes: Optional[str] = None
-
-class TaskResponse(TaskBase):
-    id: int
+    status: str
+    completed: bool
+    notes: Optional[str] = ""
+    position: int = 0
+    pomodoros: int = 0
+    completed_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    subtasks: List[SubtaskResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReorderRequest(BaseModel):
+    ids: List[int]
+
 
 # --- Events ---
 class EventBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    time: str = Field(default="All Day")
-    date: str = Field(...)  # YYYY-MM-DD
-    category: str = Field(default="Academic")
-    icon: Optional[str] = Field(default="📅")
-    location: Optional[str] = Field(default="")
+    time: str = Field(default="All Day", max_length=100)
+    date: str = Field(..., pattern=DATE_PATTERN)
+    category: str = Field(default="Academic", max_length=100)
+    icon: Optional[str] = Field(default=None, max_length=20)
+    location: Optional[str] = Field(default="", max_length=255)
+
 
 class EventCreate(EventBase):
     pass
 
-class EventUpdate(BaseModel):
-    title: Optional[str] = None
-    time: Optional[str] = None
-    date: Optional[str] = None
-    category: Optional[str] = None
-    icon: Optional[str] = None
-    location: Optional[str] = None
 
-class EventResponse(EventBase):
+class EventUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    time: Optional[str] = Field(default=None, max_length=100)
+    date: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+    category: Optional[str] = Field(default=None, max_length=100)
+    icon: Optional[str] = Field(default=None, max_length=20)
+    location: Optional[str] = Field(default=None, max_length=255)
+
+
+class EventResponse(BaseModel):
     id: int
+    title: str
+    time: str
+    date: str
+    category: str
+    icon: Optional[str] = None
+    location: Optional[str] = ""
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # --- Habits ---
-class HabitBase(BaseModel):
+class HabitCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    icon: Optional[str] = Field(default="🐾")
+    icon: Optional[str] = Field(default="🐾", max_length=20)
 
-class HabitCreate(HabitBase):
-    days: Optional[List[bool]] = Field(default_factory=lambda: [False] * 7)
 
 class HabitUpdate(BaseModel):
-    name: Optional[str] = None
-    icon: Optional[str] = None
-    days: Optional[List[bool]] = None
-    streak: Optional[int] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    icon: Optional[str] = Field(default=None, max_length=20)
 
-class HabitResponse(HabitBase):
+
+class HabitResponse(BaseModel):
     id: int
-    days: List[bool]
+    name: str
+    icon: Optional[str] = "🐾"
+    # Completed dates within the requested window, ascending
+    checks: List[str]
     streak: int
+    best_streak: int
+    created_at: Optional[datetime] = None
+
+
+# --- Focus sessions ---
+class FocusSessionCreate(BaseModel):
+    date: str = Field(..., pattern=DATE_PATTERN)
+    minutes: int = Field(..., ge=1, le=240)
+    task_id: Optional[int] = None
+
+
+class FocusSessionResponse(BaseModel):
+    id: int
+    date: str
+    minutes: int
+    task_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # --- Bookmarks ---
 class BookmarkBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    url: str = Field(...)
-    category: str = Field(default="General")
-    icon: Optional[str] = Field(default="🔗")
+    url: str = Field(..., min_length=1, max_length=500)
+    category: str = Field(default="General", max_length=100)
+    icon: Optional[str] = Field(default="🔗", max_length=20)
+
+    @field_validator("url")
+    @classmethod
+    def _http_only(cls, value: str) -> str:
+        value = value.strip()
+        if not value.lower().startswith(("http://", "https://")):
+            value = "https://" + value
+        return value
+
 
 class BookmarkCreate(BookmarkBase):
     pass
 
-class BookmarkResponse(BookmarkBase):
+
+class BookmarkResponse(BaseModel):
     id: int
+    title: str
+    url: str
+    category: str
+    icon: Optional[str] = "🔗"
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # --- Counters ---
 class CounterResponse(BaseModel):
@@ -103,13 +203,16 @@ class CounterResponse(BaseModel):
     stain_pets: int
     focus_paws: int
 
+
 class CounterIncrementResponse(BaseModel):
     name: str
     count: int
 
+
 # --- Notes ---
 class NoteUpdate(BaseModel):
-    content: str
+    content: str = Field(..., max_length=200000)
+
 
 class NoteResponse(BaseModel):
     id: str
@@ -118,33 +221,83 @@ class NoteResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # --- Assignments ---
+AssignmentStatus = Literal["Not Started", "In Progress", "Completed"]
+
+
 class AssignmentBase(BaseModel):
+    course: str = Field(..., min_length=1, max_length=150)
+    prof: Optional[str] = Field(default="", max_length=150)
+    name: str = Field(..., min_length=1, max_length=255)
+    due: Optional[str] = Field(default="", max_length=100)
+    weight: Optional[str] = Field(default="", max_length=50)
+    status: AssignmentStatus = "Not Started"
+
+
+class AssignmentCreate(AssignmentBase):
+    pass
+
+
+class AssignmentUpdate(BaseModel):
+    course: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    prof: Optional[str] = Field(default=None, max_length=150)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    due: Optional[str] = Field(default=None, max_length=100)
+    weight: Optional[str] = Field(default=None, max_length=50)
+    status: Optional[AssignmentStatus] = None
+
+
+class AssignmentResponse(BaseModel):
+    id: int
     course: str
     prof: Optional[str] = ""
     name: str
     due: Optional[str] = ""
     weight: Optional[str] = ""
-    status: Optional[str] = "Not Started"
-
-class AssignmentCreate(AssignmentBase):
-    pass
-
-class AssignmentResponse(AssignmentBase):
-    id: int
+    status: str
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
+
+# --- Auth ---
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=1, max_length=512)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=512)
+    new_password: str = Field(..., min_length=10, max_length=512)
+
+
+class ProfileUpdate(BaseModel):
+    display_name: str = Field(..., min_length=1, max_length=100)
+
+
+class UserResponse(BaseModel):
+    username: str
+    display_name: str
+
+
+class AuthStatusResponse(BaseModel):
+    authenticated: bool
+    account_exists: bool
+    user: Optional[UserResponse] = None
+
+
 # --- Sync & Health ---
 class SyncRequest(BaseModel):
-    sheet_url: Optional[str] = None
+    sheet_url: Optional[str] = Field(default=None, max_length=2000)
+
 
 class SyncResponse(BaseModel):
     success: bool
     message: str
     tasks_synced: int
     last_sync_time: str
+
 
 class HealthResponse(BaseModel):
     status: str
