@@ -9,10 +9,23 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from config import settings
 from database.connection import get_db
-from models.db_models import Task
+from models.db_models import Task, utcnow
 from models.schemas import SyncRequest, SyncResponse
 
 router = APIRouter(prefix="/api/sync", tags=["Sync & Export"])
+
+def _normalize_date(raw: str) -> Optional[str]:
+    """Accept YYYY-MM-DD or US-style M/D/YYYY from the sheet; anything else is dropped."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return None
+
 
 def _parse_and_sync_csv(csv_content: str, db: Session) -> int:
     reader = csv.reader(io.StringIO(csv_content))
@@ -67,7 +80,7 @@ def _parse_and_sync_csv(csv_content: str, db: Session) -> int:
         elif re.search(r"catnap|low", priority_raw, re.I):
             priority = "Catnap"
 
-        due = row[due_col].strip() if due_col != -1 and due_col < len(row) and row[due_col].strip() else "2026-09-04"
+        due = _normalize_date(row[due_col]) if due_col != -1 and due_col < len(row) else None
         source = row[src_col].strip() if src_col != -1 and src_col < len(row) and row[src_col].strip() else "Master Sheet"
         status_val = row[status_col].strip() if status_col != -1 and status_col < len(row) and row[status_col].strip() else "Pending"
         notes = row[notes_col].strip() if notes_col != -1 and notes_col < len(row) else ""
@@ -78,14 +91,16 @@ def _parse_and_sync_csv(csv_content: str, db: Session) -> int:
             existing = tasks_by_title[lookup_key]
             existing.category = category
             existing.priority = priority
-            existing.due_date = due
+            if due:
+                existing.due_date = due
             existing.source = source
             if notes:
                 existing.notes = notes
             # If sheet says Completed, mark complete
-            if status_val.lower() == "completed":
+            if status_val.lower() == "completed" and not existing.completed:
                 existing.completed = True
                 existing.status = "Completed"
+                existing.completed_at = utcnow()
         else:
             is_completed = (status_val.lower() == "completed")
             new_task = Task(
@@ -96,6 +111,7 @@ def _parse_and_sync_csv(csv_content: str, db: Session) -> int:
                 source=source,
                 status="Completed" if is_completed else "Pending",
                 completed=is_completed,
+                completed_at=utcnow() if is_completed else None,
                 notes=notes
             )
             db.add(new_task)
@@ -115,20 +131,23 @@ async def sync_from_google_sheet(
     if not url:
         raise HTTPException(status_code=400, detail="No Google Sheet CSV URL provided or configured")
 
+    if not url.lower().startswith(("https://", "http://")):
+        raise HTTPException(status_code=400, detail="The sheet link must start with https://")
+
     try:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             resp = await client.get(url)
-            if resp.status_code != 200:
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"Failed to fetch Google Sheet CSV: HTTP {resp.status_code}"
-                )
-            csv_content = resp.text
-    except Exception as e:
+    except httpx.HTTPError as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Network error while connecting to Google Sheet: {str(e)}"
+            detail=f"Couldn't reach the Google Sheet: {e.__class__.__name__}"
         )
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail=f"The Google Sheet answered with HTTP {resp.status_code}. Check that it's published as CSV."
+        )
+    csv_content = resp.text
 
     count = _parse_and_sync_csv(csv_content, db)
     now_str = datetime.now().strftime("%I:%M %p")
@@ -144,7 +163,9 @@ async def upload_csv(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    content = await file.read()
+    content = await file.read(5 * 1024 * 1024 + 1)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="CSV files must be under 5 MB")
     csv_text = content.decode("utf-8", errors="replace")
     count = _parse_and_sync_csv(csv_text, db)
     now_str = datetime.now().strftime("%I:%M %p")
@@ -172,7 +193,7 @@ def export_tasks_csv(db: Session = Depends(get_db)):
             t.priority,
             t.due_date or "",
             t.source or "",
-            "Completed" if t.completed else "Pending",
+            t.status or ("Completed" if t.completed else "Pending"),
             t.notes or ""
         ])
 

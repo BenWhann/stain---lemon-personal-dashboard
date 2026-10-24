@@ -1,184 +1,167 @@
-# 🐾 Lemon & Stain Cozy Luxury Personal Dashboard
+# Lemon & Stain
 
-A production-grade, lightweight full-stack personal productivity dashboard featuring the dual-theme **"Lemon & Stain"** aesthetic (Warm Cream Sunlight mode & Sleek Obsidian Void mode). Specifically engineered for high aesthetics, responsive micro-interactions, and self-hosting on low-resource Linux VPS instances (1–2 vCPU, 1–2 GB RAM with < 100 MB RAM usage).
+A cozy study dashboard for tasks, focus sprints, habits and coursework, set in an
+illustrated study room where Lemon and Stain keep you company. The room follows
+the time of day: late-afternoon sun in **Lemon Sunlight**, lamp light and rain in
+**Stain Nocturne**.
 
----
+![The journal at night](docs/screenshots/journal-night.jpg)
 
-## 🌟 Key Features
+| Lemon Sunlight | Sign-in | Insights |
+|---|---|---|
+| ![Day](docs/screenshots/journal-day.jpg) | ![Sign-in](docs/screenshots/login.jpg) | ![Insights](docs/screenshots/insights.jpg) |
 
-1. **Dual "Lemon & Stain" Design System**:
-   - **Lemon Mode (Light)**: Warm cream/canvas tones (`#FAF6F0`), cozy amber accents, soft diffuse paper shadows.
-   - **Stain Mode (Dark)**: Sleek obsidian slate (`#151318`), rich charcoal cards, glowing amber outlines.
-2. **Interactive Pet Counter & Mood Engine**:
-   - Individual counters for Lemon 🍋 and Stain 🐈‍⬛.
-   - Micro-interaction particle animations (`🍋💛🐾` and `🐈‍⬛🖤✨`) powered by Framer Motion.
-   - Dynamic mood messages responding to interaction velocity.
-3. **Task & Clinical Deadline Engine**:
-   - Priority tags: `⚡ Zoomies` (High), `🐾 Purr-fect` (Medium), `💤 Catnap` (Low).
-   - Category filtering: Grad School (MSW), Work/Practicum, Bills, Personal.
-   - Smart relative countdown badges (*"Due in 2 days"*, *"Overdue"*).
-4. **Master Schedule & Agenda**:
-   - Unified calendar for Augsburg MSW coursework, CARE Counseling practicum, UHHC shifts, and personal reminders.
-   - Month grid view and upcoming agenda timeline.
-5. **Focus Den / Purr-modoro Timer**:
-   - 25m Focus Sprint, 5m Cat Nap, and 15m Long Nap intervals.
-   - Animated SVG circular progress ring.
-   - **Synthesized Web Audio API Chime**: Crystal clear 528 Hz meditation harmonic bell without external MP3 dependencies.
-6. **Habit & Paw-gress Routine Tracker**:
-   - 7-day completion toggles with automatic streak calculations.
-7. **Quick Feline Launchpad**:
-   - Direct launch links for Augsburg Moodle, CARE Counseling EHR, Master Sheets, and Banfield Vet.
-8. **Clinical & Study Hub**:
-   - MSW Course milestones table and autosaving markdown scratchpad.
-9. **Google Sheets / CSV Bi-Directional Synchronization**:
-   - Syncs with Master Task Tracker sheets published as CSV.
-   - Server-side task merging preserving local completion states.
-   - RFC 4180 compliant CSV export for backup.
+## What's inside
 
----
+- **Quests**: today, this week and later lists; natural-language quick add
+  (`Read chapter 4 fri !high #school` sets the date, priority and area); steps
+  (subtasks); notes; undo for completes and deletes.
+- **The board**: drag tasks between Up next, In paws and Done.
+- **Focus timer**: survives refreshes, links to a task, logs every finished
+  sprint, and runs every fourth break long.
+- **Habits** with real date-based streaks, plus a twelve-week heatmap in Insights.
+- **Calendar**, **coursework tracker**, autosaving **field notes**, and a **launchpad** of links.
+- **Google Sheet sync** and CSV import/export.
+- **Lemon and Stain**: drawn from photos, they nap, blink, watch your cursor,
+  purr when petted, trot across the page as you scroll, and parade when you
+  finish everything due today or level up.
+- **Delight**: confetti, combos, a synthesized sound engine and an ambience mixer
+  (rain, fireplace, library hush, purring, lo-fi keys). No audio files.
+- **Quick actions** (`Ctrl/⌘ K`) and keyboard shortcuts (`N`, `F`, `L`, `1`–`3`).
+- **Calm mode** for a still room, and it respects the device's reduced-motion setting.
 
-## 🏗️ System Architecture
+## Security
 
-```text
-personal-dashboard/
-├── docker-compose.yml       # Multi-container orchestration with resource limits
-├── Caddyfile                # Automated Let's Encrypt HTTPS, caching, and proxy
-├── .env.example             # Documented environment variables
-├── README.md
-├── backend/                 # Lightweight FastAPI + SQLite REST API (< 45 MB RAM)
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── main.py
-│   ├── config.py
-│   ├── database/            # SQLite connection, session management, and seed data
-│   ├── models/              # Pydantic v2 schemas and SQLAlchemy models
-│   └── routes/              # Tasks, Events, Habits, Counters, Bookmarks, Notes, Sync
-└── frontend/                # React 18 + TypeScript + Vite + Tailwind CSS + Framer Motion
-    ├── Dockerfile           # Multi-stage build with Caddy static hosting
-    ├── package.json
-    ├── vite.config.ts
-    ├── tailwind.config.js
-    └── src/
-```
+Everything sits behind a sign-in. There is one account, created on first start
+from `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
 
----
+- Passwords are hashed with scrypt. Sessions are random tokens in an `HttpOnly`,
+  `Secure`, `SameSite=Strict` cookie, and only a hash of each token is stored.
+- Failed sign-ins are throttled (5 per 15 minutes per IP).
+- State-changing requests must carry a custom header, which blocks cross-site
+  request forgery.
+- The API docs (`/docs`) are only served in development.
+- Caddy adds HTTPS with HSTS, a strict Content-Security-Policy and the usual
+  hardening headers.
 
-## 🚀 Quick Start with Docker Compose
+> **Keep client information out.** This is a personal productivity tool, not a
+> clinical record system. Don't store client names or identifying details in tasks or notes.
 
-### 1. Clone & Configure
+## Run it locally
+
+**Without Docker** (two terminals):
+
 ```bash
-git clone <your-repo-url> personal-dashboard
-cd personal-dashboard
-
-# Copy environment template
-cp .env.example .env
-```
-
-### 2. Run Locally
-```bash
-docker compose up -d --build
-```
-Open your browser to [http://localhost](http://localhost). Interactive API documentation is available at [http://localhost/docs](http://localhost/docs).
-
----
-
-## ☁️ Low-Resource Linux VPS Deployment Guide (1–2 vCPU, 1 GB RAM)
-
-### 1. Server Prerequisites (Ubuntu 22.04 / 24.04 LTS or Debian 12)
-```bash
-# Update and install Docker + Compose
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl ufw git
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-```
-
-### 2. Configure Firewall (UFW)
-```bash
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP (Let's Encrypt verification)
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw enable
-```
-
-### 3. DNS Configuration
-Point your domain's DNS `A` record (e.g. `dashboard.yourdomain.com`) to your VPS public IPv4 address.
-
-### 4. Deploy with Automated HTTPS
-Edit your `.env` file on the server:
-```env
-DOMAIN=dashboard.yourdomain.com
-APP_ENV=production
-DATA_DIR=./data
-```
-
-Launch the stack:
-```bash
-docker compose up -d --build
-```
-Caddy will automatically request and provision a free Let's Encrypt TLS certificate. Your dashboard is now live and secure!
-
----
-
-## 🛠️ Local Development (Without Docker)
-
-### Backend
-```bash
+# API: http://localhost:8000
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements-dev.txt
+APP_ENV=development uvicorn main:app --reload --port 8000
 
-### Frontend
-```bash
+# Web: http://localhost:5173
 cd frontend
 npm install
 npm run dev
 ```
-The Vite development server will run on `http://localhost:5173` and proxy API calls to `http://localhost:8000`.
 
----
+In development a throwaway account is created automatically: **admin / lemon-and-stain**.
+On Windows, `start-local.bat` does all of this for you.
 
-## 💾 SQLite Backup & Restore
+**With Docker** (production-like, HTTPS on https://localhost):
 
-All application data (tasks, habits, events, counters, bookmarks, and notes) is persisted in a single SQLite database file in `./data/dashboard.db`.
-
-### Create a Backup
 ```bash
-# Safely snapshot the SQLite database without stopping the container
-docker exec lemon-stain-api python -c "
-import sqlite3
-src = sqlite3.connect('/data/dashboard.db')
-dst = sqlite3.connect('/data/dashboard_backup.db')
-src.backup(dst)
-dst.close()
-src.close()
-print('Backup created successfully!')
-"
+cp .env.example .env          # set ADMIN_PASSWORD (10+ characters) and DOMAIN=localhost
+docker compose up -d --build
 ```
 
-### Restore from Backup
+**Tests**
+
 ```bash
-cp ./data/dashboard_backup.db ./data/dashboard.db
-docker compose restart api
+cd backend && python -m pytest                          # 30 API tests
+cd frontend && npm run typecheck && npm test && npm run build
 ```
 
----
+## Deploy to the Hostinger VPS
 
-## 📊 Google Sheets Sync Setup
+Every push to `main` runs the tests, builds both Docker images in GitHub Actions,
+pushes them to GitHub Container Registry, and rolls them out on the VPS. The VPS
+never compiles anything, so a 1 GB plan is plenty. Each deploy backs up the
+database first. If the new version doesn't come up healthy, the deploy rolls back
+to the last good release automatically and the GitHub job fails.
 
-1. Open your Google Sheet (e.g., Master Task Tracker).
-2. Go to **File** → **Share** → **Publish to web**.
-3. Under *Link*, select the specific sheet tab (e.g., `Active Tasks & Deadlines`) and choose **Comma-separated values (.csv)**.
-4. Click **Publish** and copy the generated link.
-5. In your dashboard, open the **Sources & Sync** tab and paste the link into the **Connected Sheet CSV URL** field.
-6. Toggle **Auto-sync on page load** or click **Sync from Google Sheet Now**.
+### One-time setup
 
----
+1. **Make a deploy key** on your computer:
+   ```bash
+   ssh-keygen -t ed25519 -f lemon-stain-deploy -N "" -C "github-deploy"
+   ```
+2. **Prepare the server.** Copy `scripts/bootstrap-vps.sh` to the VPS and run it
+   as root with the *public* key:
+   ```bash
+   scp scripts/bootstrap-vps.sh root@YOUR_VPS_IP:
+   ssh root@YOUR_VPS_IP 'bash bootstrap-vps.sh "$(cat)"' < lemon-stain-deploy.pub
+   ```
+   It installs Docker, turns on the firewall (SSH, 80, 443), fail2ban and
+   automatic security updates, adds a 1 GB swap file, creates a `deploy` user, and
+   schedules a nightly database backup.
+3. **Point DNS.** Add an `A` record for your domain (for example
+   `dashboard.yourdomain.com`) that points at the VPS IP.
+4. **Create the server's `.env`** in `/opt/lemon-stain/.env` (start from
+   `.env.example`): set `DOMAIN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` and
+   `DISPLAY_NAME`. Then lock it down with `chmod 600 /opt/lemon-stain/.env`.
+5. **Add the GitHub secrets** under *Settings → Secrets and variables → Actions*:
 
-## 🐾 License
-MIT. Crafted with love for Lemon 🍋 & Stain 🐈‍⬛.
+   | Secret | Value |
+   |---|---|
+   | `VPS_HOST` | the VPS IP or hostname |
+   | `VPS_SSH_KEY` | the full contents of the *private* key `lemon-stain-deploy` |
+   | `VPS_KNOWN_HOSTS` | output of `ssh-keyscan -t ed25519 YOUR_VPS_IP` (check the fingerprint against the Hostinger panel) |
+   | `VPS_USER` | optional, defaults to `deploy` |
+   | `VPS_PORT` | optional, defaults to `22` |
+
+   Optionally add a GitHub **environment** named `production` with required
+   reviewers if you'd like to approve each deploy.
+6. **Push to `main`** (or run *Deploy to VPS* from the Actions tab). The first
+   start creates your account, and Caddy fetches the HTTPS certificate.
+
+### Day to day
+
+All of these run in `/opt/lemon-stain` on the VPS:
+
+| Task | Command |
+|---|---|
+| See what's running | `docker compose ps` |
+| Logs | `docker compose logs -f --tail=100` |
+| Back up now | `./scripts/backup.sh` (nightly at 03:15, kept 14 days in `backups/`) |
+| Restore a backup | `./scripts/restore.sh backups/dashboard-<stamp>.db` |
+| Roll back by hand | `SKIP_PULL=1 ./scripts/deploy.sh <older sha-tag>` |
+| Reset the password | `docker compose exec api python manage.py set-password <username>` |
+| Sign out every device | `docker compose exec api python manage.py sign-out-everywhere` |
+
+Copy `backups/` off the server now and then (or sync it to cloud storage).
+
+## How it's built
+
+```
+backend/     FastAPI + SQLAlchemy + SQLite (WAL). Auth in security.py, idempotent
+             migrations in database/migrations.py, tests in tests/.
+frontend/    React 18 + TypeScript + Vite + Tailwind, Framer Motion, Zustand,
+             dnd-kit, Lenis. The illustrations are hand-built SVG in src/art/.
+             Caddyfile + Dockerfile build the web image (static files + reverse proxy).
+scripts/     bootstrap-vps.sh, deploy.sh (health-checked, auto-rollback),
+             backup.sh, restore.sh.
+.github/     ci.yml (tests + image builds on PRs), deploy.yml (main → GHCR → VPS).
+```
+
+**About the art.** Lemon and Stain are SVG illustrations coded from reference
+photos. The trotting cat is a two-segment leg rig posed every frame from a
+trot gait. Diagonal leg pairs move together, and when scrolling drives the
+cat, its stride is computed from the distance travelled so the paws stay planted.
+Tools like Rive or Lottie need hand-animated files made in their editors.
+Procedural SVG keeps the cats editable in code, light (no runtime or asset
+downloads), and able to react to the app: they watch the cursor, wake when
+petted, and celebrate with you.
+
+## License
+
+MIT. Made with love for Lemon 🍋 and Stain 🐾.

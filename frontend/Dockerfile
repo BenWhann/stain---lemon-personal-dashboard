@@ -1,20 +1,15 @@
-# Stage 1: Build static assets with Node 20
-FROM node:20-alpine AS builder
-
+# syntax=docker/dockerfile:1
+# Stage 1: build the static app
+FROM node:20-alpine AS build
 WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci
-
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve via high-performance Caddy server
-FROM caddy:2-alpine AS runner
-
-# Copy compiled static assets to Caddy's default webroot
-COPY --from=builder /app/dist /usr/share/caddy
-
-EXPOSE 80 443
-
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+# Stage 2: Caddy serves it and reverse-proxies the API
+FROM caddy:2.8-alpine
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv
+EXPOSE 80 443 443/udp
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -q --spider http://127.0.0.1:2019/config/ || exit 1

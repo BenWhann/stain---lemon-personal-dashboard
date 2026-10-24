@@ -1,39 +1,66 @@
 export type TaskPriority = 'Zoomies' | 'Purr-fect' | 'Catnap';
-export type TaskCategory = 'Grad School' | 'Work' | 'Bills' | 'Personal';
 export type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
+export const CATEGORIES = ['Grad School', 'Work', 'Bills', 'Personal'] as const;
+export const PRIORITIES: TaskPriority[] = ['Zoomies', 'Purr-fect', 'Catnap'];
+export const STATUSES: TaskStatus[] = ['Pending', 'In Progress', 'Completed'];
+
+export interface Subtask {
+  id: number;
+  task_id: number;
+  title: string;
+  done: boolean;
+  position: number;
+}
 
 export interface Task {
   id: number;
   title: string;
-  category: TaskCategory | string;
-  priority: TaskPriority;
-  due_date: string; // YYYY-MM-DD
-  source?: string;
-  status?: TaskStatus | string;
+  category: string;
+  priority: TaskPriority | string;
+  due_date: string | null;
+  source?: string | null;
+  status: TaskStatus | string;
   completed: boolean;
+  notes?: string | null;
+  position: number;
+  pomodoros: number;
+  completed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  subtasks: Subtask[];
+}
+
+export interface TaskDraft {
+  title: string;
+  category?: string;
+  priority?: TaskPriority;
+  due_date?: string | null;
+  source?: string;
   notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  status?: TaskStatus;
+  subtasks?: string[];
 }
 
 export type EventCategory = 'Academic' | 'Work' | 'Bills' | 'Wellness' | 'Personal';
+export const EVENT_CATEGORIES: EventCategory[] = ['Academic', 'Work', 'Bills', 'Wellness', 'Personal'];
 
 export interface CalendarEvent {
   id: number;
   title: string;
   time: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   category: EventCategory | string;
-  icon?: string;
-  location?: string;
+  icon?: string | null;
+  location?: string | null;
 }
 
 export interface Habit {
   id: number;
   name: string;
-  icon?: string;
-  days: boolean[]; // 7 elements (Mon to Sun)
+  icon?: string | null;
+  checks: string[];
   streak: number;
+  best_streak: number;
 }
 
 export interface Bookmark {
@@ -41,7 +68,7 @@ export interface Bookmark {
   title: string;
   url: string;
   category: string;
-  icon?: string;
+  icon?: string | null;
 }
 
 export interface PetCounters {
@@ -50,13 +77,14 @@ export interface PetCounters {
   focus_paws: number;
 }
 
-export interface FloatingParticle {
+export interface FocusSession {
   id: number;
-  x: number;
-  y: number;
-  emoji: string;
+  date: string;
+  minutes: number;
+  task_id: number | null;
 }
 
+export type AssignmentStatus = 'Not Started' | 'In Progress' | 'Completed';
 export interface Assignment {
   id: number;
   course: string;
@@ -64,14 +92,12 @@ export interface Assignment {
   name: string;
   due: string;
   weight: string;
-  status: string;
+  status: AssignmentStatus | string;
 }
 
-export interface SyncStatusInfo {
-  status: string;
-  lastSyncTime: string | null;
-  sheetUrl: string;
-  autoSync: boolean;
+export interface User {
+  username: string;
+  display_name: string;
 }
 
-export type DashboardTab = 'overview' | 'calendar' | 'study' | 'integrations';
+export type View = 'journal' | 'insights' | 'settings';

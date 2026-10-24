@@ -1,6 +1,6 @@
-import json
+from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
-from models.db_models import Task, Event, Habit, Bookmark, Counter, Note, Assignment
+from models.db_models import Task, Event, Habit, HabitCheck, Bookmark, Counter, Note, Assignment, utcnow
 
 def seed_initial_data(db: Session):
     # Check if data already exists
@@ -24,6 +24,11 @@ def seed_initial_data(db: Session):
         Task(id=13, title='Role-Play Family & Client Overview Paper Due', category='Grad School', priority='Zoomies', due_date='2026-09-21', source='AOCP Families', completed=False, notes='Case overview for Prof. Spicer'),
         Task(id=14, title='Final MSW Learning Agreement Due', category='Grad School', priority='Zoomies', due_date='2026-09-26', source='Field Seminar', completed=False, notes='Official practicum agreement'),
     ]
+    for t in tasks:
+        if t.completed:
+            t.status = 'Completed'
+            # finished at noon on the day they were due
+            t.completed_at = datetime.fromisoformat(f"{t.due_date}T12:00:00") if t.due_date else utcnow()
     db.add_all(tasks)
 
     # Seed Events
@@ -52,15 +57,23 @@ def seed_initial_data(db: Session):
     ]
     db.add_all(events)
 
-    # Seed Habits
-    habits = [
-        Habit(id=1, name='Morning 5:00 AM Workout', icon='🏃‍♀️', days_json=json.dumps([True, True, True, True, False, False, False]), streak=4),
-        Habit(id=2, name='Pack a Healthy Lunch for Tomorrow', icon='🥗', days_json=json.dumps([True, True, True, True, True, False, False]), streak=5),
-        Habit(id=3, name='Playtime & Biscuits with Lemon & Stain', icon='🐾', days_json=json.dumps([True, True, True, True, True, True, True]), streak=21),
-        Habit(id=4, name='Clinical Field Journal & Notes (20m)', icon='📖', days_json=json.dumps([True, True, True, False, True, True, False]), streak=5),
-        Habit(id=5, name='Hydration Goal (2.5L Water)', icon='💧', days_json=json.dumps([True, True, True, True, True, True, True]), streak=7),
+    # Seed Habits: give each habit a believable streak ending yesterday,
+    # so today's paw is still there to tap.
+    today = date.today()
+    habit_seeds = [
+        (1, 'Morning 5:00 AM Workout', '🏃‍♀️', 4),
+        (2, 'Pack a Healthy Lunch for Tomorrow', '🥗', 5),
+        (3, 'Playtime & Biscuits with Lemon & Stain', '🐾', 21),
+        (4, 'Clinical Field Journal & Notes (20m)', '📖', 5),
+        (5, 'Hydration Goal (2.5L Water)', '💧', 7),
     ]
-    db.add_all(habits)
+    for habit_id, name, icon, streak in habit_seeds:
+        habit = Habit(id=habit_id, name=name, icon=icon, streak=streak)
+        habit.checks = [
+            HabitCheck(date=(today - timedelta(days=offset)).isoformat())
+            for offset in range(1, streak + 1)
+        ]
+        db.add(habit)
 
     # Seed Bookmarks
     bookmarks = [
