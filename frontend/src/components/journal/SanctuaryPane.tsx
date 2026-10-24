@@ -33,13 +33,10 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
         <div className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-ink/10" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Progress to next level">
           <motion.div
             className="h-full rounded-full"
-            style={{
-              background: 'linear-gradient(90deg, rgb(var(--caramel)), rgb(var(--honey)), rgb(255 236 190), rgb(var(--honey)))',
-              backgroundSize: '200% 100%',
-            }}
+            style={{ background: 'linear-gradient(90deg, rgb(var(--caramel)), rgb(var(--honey)) 70%, rgb(255 236 190))' }}
             initial={{ width: 0 }}
-            animate={{ width: `${Math.max(3, progress * 100)}%`, backgroundPosition: ['0% 0%', '200% 0%'] }}
-            transition={{ width: { type: 'spring', stiffness: 80, damping: 20 }, backgroundPosition: { duration: 3, repeat: Infinity, ease: 'linear' } }}
+            animate={{ width: `${Math.max(3, progress * 100)}%` }}
+            transition={{ type: 'spring', stiffness: 80, damping: 20 }}
           />
         </div>
         <p className="mt-1.5 text-xs text-ink-faint">{toNext} xp to the next level · {focusPaws} focus paws</p>

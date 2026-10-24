@@ -13,8 +13,8 @@
 */
 :root {
   --ink: 43 31 25;          /* walnut text */
-  --ink-soft: 104 84 70;
-  --ink-faint: 150 130 112;
+  --ink-soft: 92 72 58;
+  --ink-faint: 122 101 84;
   --surface: 255 248 236;   /* glass tint */
   --surface-strong: 252 243 228;
   --line: 140 105 70;
@@ -194,4 +194,12 @@ html.lenis, html.lenis body { height: auto; }
 .vertical-range {
   writing-mode: vertical-lr;
   direction: rtl;
+}
+
+/* Set by useAdaptiveQuality on devices that can't blur smoothly: same look, solid glass */
+.lite .pane,
+.lite .pane-solid {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  --glass-alpha: 0.9;
 }

@@ -363,6 +363,8 @@ function buildChannel(id: AmbienceChannel, c: Ctx): Channel {
 
 /** Set a channel's level (0..1). Channels are built lazily and torn down at zero. */
 export function setAmbience(id: AmbienceChannel, level: number) {
+  // Silence needs no audio graph; don't create one before the user has interacted
+  if (level <= 0.001 && !channels[id]) return;
   const c = context();
   if (!c || !master) return;
   let ch = channels[id];

@@ -85,6 +85,19 @@ export const TrotCat: React.FC<TrotCatProps> = ({
   const tailStripeRef = useRef<SVGPathElement | null>(null);
   const shadowRef = useRef<SVGEllipseElement | null>(null);
   const tRef = useRef(0);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const visible = useRef(true);
+
+  // Don't animate while scrolled out of view
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => {
+      visible.current = e.isIntersecting;
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const flecks = useMemo(
     () =>
@@ -107,11 +120,16 @@ export const TrotCat: React.FC<TrotCatProps> = ({
       { kind: 'front', offset: 0.0 },
     ] as const;
 
+    let drawn = NaN;
     const frame = (now: number) => {
+      raf = requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (!paused && !phaseRef) tRef.current += dt * cadence;
       const t = phaseRef ? phaseRef.current : tRef.current;
+      // Skip the DOM work when nothing moved or nobody can see it
+      if (t === drawn || !visible.current) return;
+      drawn = t;
 
       legs.forEach((leg, i) => {
         const p = (((t + leg.offset) % 1) + 1) % 1;
@@ -148,8 +166,6 @@ export const TrotCat: React.FC<TrotCatProps> = ({
       tailRef.current?.setAttribute('d', tail);
       tailStripeRef.current?.setAttribute('d', tail);
       shadowRef.current?.setAttribute('rx', (78 - Math.abs(phase2) * 4).toFixed(1));
-
-      raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
@@ -184,7 +200,7 @@ export const TrotCat: React.FC<TrotCatProps> = ({
   );
 
   return (
-    <svg viewBox={`0 0 ${TROT_VIEWBOX.w} ${TROT_VIEWBOX.h}`} className={className} style={style} aria-hidden="true">
+    <svg ref={svgRef} viewBox={`0 0 ${TROT_VIEWBOX.w} ${TROT_VIEWBOX.h}`} className={className} style={style} aria-hidden="true">
       <defs>
         <clipPath id={`${uid}-torso`}>
           <path d={TORSO} />

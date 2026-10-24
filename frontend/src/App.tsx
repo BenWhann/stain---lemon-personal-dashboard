@@ -12,6 +12,7 @@ import { Settings } from './components/settings/Settings';
 import { TaskEditor } from './components/tasks/TaskEditor';
 import { Toaster } from './components/ui/Toaster';
 import { useEnvironment } from './hooks/useEnvironment';
+import { useAdaptiveQuality } from './hooks/useAdaptiveQuality';
 import { useLenis } from './hooks/useLenis';
 import { useShortcuts } from './hooks/useShortcuts';
 import { setAmbience, sfx, stopAllAmbience, AMBIENCE_CHANNELS } from './lib/audio';
@@ -96,6 +97,7 @@ const Dashboard: React.FC<{ night: boolean; calm: boolean; onToggleTheme: () => 
   const loaded = useRef(false);
 
   useLenis(!calm);
+  useAdaptiveQuality(!calm);
 
   // Load everything once after sign-in
   useEffect(() => {

@@ -81,10 +81,25 @@ function useLayer(px: MotionValue<number>, py: MotionValue<number>, depth: numbe
   return { x, y };
 }
 
+/** One stacked slice of the room. Overscanned by 2% so parallax never shows an edge. */
+const Layer: React.FC<{ offset: { x: MotionValue<number>; y: MotionValue<number> }; children: React.ReactNode }> = ({
+  offset,
+  children,
+}) => (
+  <motion.svg
+    viewBox={`0 0 ${W} ${H}`}
+    preserveAspectRatio="xMidYMid slice"
+    className="pointer-events-none absolute left-[-2%] top-[-2%] h-[104%] w-[104%]"
+    style={{ ...offset, willChange: 'transform' }}
+  >
+    {children}
+  </motion.svg>
+);
+
 const FAIRY_PATH = 'M-20,36 C300,120 520,118 720,96 C940,72 1160,120 1460,40';
 
 export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPetLemon, onPetStain }) => {
-  const svgRef = useRef<SVGSVGElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
   const sx = useSpring(mx, { stiffness: 40, damping: 18, mass: 0.8 });
@@ -106,7 +121,7 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         // Stain watches the cursor: aim from her head
-        const svg = svgRef.current;
+        const svg = rootRef.current?.querySelector('svg');
         if (!svg) return;
         const r = svg.getBoundingClientRect();
         const scale = Math.max(r.width / W, r.height / H);
@@ -163,13 +178,13 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
   const nightOp = night ? 1 : 0;
 
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="xMidYMid slice"
-      className={`study-scene absolute inset-0 h-full w-full ${calm ? 'calm' : ''}`}
-      aria-hidden="true"
-    >
+    <div ref={rootRef} className={`study-scene absolute inset-0 overflow-hidden ${calm ? 'calm' : ''}`} aria-hidden="true">
+      {/*
+        The room is split into stacked SVG layers that share one coordinate system.
+        Static artwork is drawn once; only the small animated layers repaint, and
+        the pointer parallax moves whole layers on the GPU compositor.
+      */}
+      <Layer offset={far}>
       <defs>
         <linearGradient id="wall-day" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#E7CFA6" />
@@ -258,8 +273,6 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
         </filter>
       </defs>
 
-      {/* ── Far layer: wall, window, sky ─────────────────────────────── */}
-      <motion.g style={far}>
         <rect x={-40} y={-40} width={W + 80} height={H + 80} fill="url(#wall-day)" style={{ ...fade, opacity: dayOp }} />
         <rect x={-40} y={-40} width={W + 80} height={H + 80} fill="url(#wall-night)" style={{ ...fade, opacity: nightOp }} />
         <rect x={-40} y={-40} width={W + 80} height={H + 80} fill="url(#wallpaper)" />
@@ -279,36 +292,20 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
         </g>
 
         {/* window */}
-        <g>
-          <path d="M538,488 L538,198 C538,104 632,58 735,58 C838,58 932,104 932,198 L932,488Z" fill="#5A3A26" />
-          <g clipPath="url(#window-glass)">
-            <rect x={540} y={60} width={400} height={420} fill="url(#sky-day)" style={{ ...fade, opacity: dayOp }} />
-            <rect x={540} y={60} width={400} height={420} fill="url(#sky-night)" style={{ ...fade, opacity: nightOp }} />
-            {/* sun and clouds */}
-            <g style={{ ...fade, opacity: dayOp }}>
-              <circle cx={800} cy={330} r={120} fill="url(#sun)" />
-              <circle cx={800} cy={330} r={34} fill="#FFF1C9" />
-              <g className="scene-drift" fill="#FFE3BC" opacity={0.85}>
-                <ellipse cx={640} cy={190} rx={60} ry={14} />
-                <ellipse cx={676} cy={180} rx={34} ry={14} />
-                <ellipse cx={860} cy={240} rx={50} ry={10} />
-              </g>
-            </g>
-            {/* moon, stars, rain */}
-            <g style={{ ...fade, opacity: nightOp }}>
+        <path d="M538,488 L538,198 C538,104 632,58 735,58 C838,58 932,104 932,198 L932,488Z" fill="#5A3A26" />
+        <g clipPath="url(#window-glass)">
+          <rect x={540} y={60} width={400} height={420} fill="url(#sky-day)" style={{ ...fade, opacity: dayOp }} />
+          <rect x={540} y={60} width={400} height={420} fill="url(#sky-night)" style={{ ...fade, opacity: nightOp }} />
+          {/* sun and clouds */}
+          <g style={{ ...fade, opacity: dayOp }}>
+            <circle cx={800} cy={330} r={120} fill="url(#sun)" />
+            <circle cx={800} cy={330} r={34} fill="#FFF1C9" />
+          </g>
+          <g style={{ ...fade, opacity: nightOp }}>
               <circle cx={820} cy={180} r={70} fill="url(#moon-glow)" />
               <circle cx={820} cy={180} r={26} fill="#EEF0FF" />
               <circle cx={830} cy={172} r={26} fill="#1B2247" opacity={0.9} />
-              {stars.map((s, i) => (
-                <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#F4F2FF" className="scene-twinkle" style={{ animationDelay: `${s.d}s` }} />
-              ))}
-              <g stroke="#A9B6E8" strokeWidth={1.1} strokeLinecap="round" opacity={0.45}>
-                {rain.map((r, i) => (
-                  <line key={i} x1={r.x} y1={0} x2={r.x - 4} y2={r.len} className="scene-rain"
-                    style={{ animationDuration: `${r.dur}s`, animationDelay: `${r.delay}s` }} />
-                ))}
-              </g>
-            </g>
+          </g>
             {/* distant rooftops */}
             <path d="M540,430 L590,430 L590,400 L620,382 L650,400 L650,420 L700,420 L700,392 L742,392 L742,410 L790,410 L790,380 L812,364 L834,380 L834,404 L880,404 L880,386 L920,386 L940,480 L540,480Z"
               fill={night ? '#151229' : '#B56A52'} opacity={night ? 0.95 : 0.55} style={{ transition: 'fill 1.4s' }} />
@@ -321,6 +318,29 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
               </g>
             )}
           </g>
+      </Layer>
+
+      <Layer offset={far}>
+        <g clipPath="url(#window-glass)">
+          <g style={{ ...fade, opacity: dayOp }}>
+              <g className="scene-drift" fill="#FFE3BC" opacity={0.85}>
+                <ellipse cx={640} cy={190} rx={60} ry={14} />
+                <ellipse cx={676} cy={180} rx={34} ry={14} />
+                <ellipse cx={860} cy={240} rx={50} ry={10} />
+              </g>
+            </g>
+          <g style={{ ...fade, opacity: nightOp }}>
+              {stars.map((s, i) => (
+                <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#F4F2FF" className="scene-twinkle" style={{ animationDelay: `${s.d}s` }} />
+              ))}
+              <g stroke="#A9B6E8" strokeWidth={1.1} strokeLinecap="round" opacity={0.45}>
+                {rain.map((r, i) => (
+                  <line key={i} x1={r.x} y1={0} x2={r.x - 4} y2={r.len} className="scene-rain"
+                    style={{ animationDuration: `${r.dur}s`, animationDelay: `${r.delay}s` }} />
+                ))}
+              </g>
+            </g>
+        </g>
           {/* mullions */}
           <g fill="#5A3A26">
             <rect x={729} y={66} width={12} height={410} />
@@ -332,7 +352,6 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
           <rect x={508} y={470} width={454} height={22} rx={3} fill="#6B4630" />
           <rect x={508} y={470} width={454} height={4} fill="#9A6A48" />
           <rect x={516} y={492} width={438} height={10} fill="#000" opacity={0.2} />
-        </g>
 
         {/* sheer curtains with a slow breeze */}
         <g className="scene-curtain-l">
@@ -344,15 +363,26 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
         <rect x={440} y={34} width={590} height={8} rx={4} fill="#3B2617" />
         <circle cx={440} cy={38} r={9} fill="#C79A52" />
         <circle cx={1030} cy={38} r={9} fill="#C79A52" />
-      </motion.g>
+      </Layer>
 
-      {/* ── Mid layer: shelves, sill life, Lemon ─────────────────────── */}
-      <motion.g style={mid}>
+      <Layer offset={mid}>
         <Shelf x={1080} y={250} w={380} seed={5} maxH={110} />
         <Shelf x={1080} y={430} w={380} seed={9} maxH={100} />
+        <path d="M1366,250 L1370,216 L1406,216 L1410,250Z" fill="#B5643F" />
+        {/* books stacked on the sill with Lemon asleep on top */}
+        <g>
+          <rect x={590} y={448} width={170} height={22} rx={2} fill="#6E2B2B" />
+          <rect x={598} y={430} width={150} height={18} rx={2} fill="#2F4A3A" />
+          <rect x={590} y={414} width={160} height={16} rx={2} fill="#C8932F" />
+          <rect x={590} y={420} width={160} height={2} fill="#F2D9A0" opacity={0.6} />
+          <rect x={598} y={438} width={150} height={2} fill="#E8C27A" opacity={0.5} />
+        </g>
+        <path d="M842,470 L846,440 L874,440 L878,470Z" fill="#E8DCC6" />
+      </Layer>
+
+      <Layer offset={mid}>
         {/* plant on the top shelf */}
         <g transform="translate(1388 250)">
-          <path d="M-22,0 L-18,-34 L18,-34 L22,0Z" fill="#B5643F" />
           <g fill="#4F7A45" className="scene-sway">
             <path d="M0,-34 C-30,-60 -40,-90 -20,-104 C-14,-80 -6,-60 0,-34Z" />
             <path d="M0,-34 C24,-64 44,-80 52,-98 C34,-92 14,-70 0,-34Z" />
@@ -371,14 +401,6 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
           })}
         </g>
 
-        {/* books stacked on the sill with Lemon asleep on top */}
-        <g>
-          <rect x={590} y={448} width={170} height={22} rx={2} fill="#6E2B2B" />
-          <rect x={598} y={430} width={150} height={18} rx={2} fill="#2F4A3A" />
-          <rect x={590} y={414} width={160} height={16} rx={2} fill="#C8932F" />
-          <rect x={590} y={420} width={160} height={2} fill="#F2D9A0" opacity={0.6} />
-          <rect x={598} y={438} width={150} height={2} fill="#E8C27A" opacity={0.5} />
-        </g>
         <LoafCat
           coat="lemon"
           asleep={!cats.lemonAwake}
@@ -387,11 +409,10 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
           width={200}
           height={125}
           onClick={onPetLemon}
-          className="cursor-pointer text-[#7b5a3a] dark:text-[#e9d7b6]"
+          className="pointer-events-auto cursor-pointer text-[#7b5a3a] dark:text-[#e9d7b6]"
           title="Lemon. Click to pet."
         />
         <g transform="translate(860 470)">
-          <path d="M-18,0 L-14,-30 L14,-30 L18,0Z" fill="#E8DCC6" />
           <g fill="#6B8F4E" className="scene-sway">
             <ellipse cx={-8} cy={-44} rx={8} ry={16} transform="rotate(-20 -8 -44)" />
             <ellipse cx={8} cy={-46} rx={8} ry={17} transform="rotate(18 8 -46)" />
@@ -406,10 +427,6 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
             <path d="M790,140 L900,150 L1380,900 L1120,900Z" fill="url(#ray)" opacity={0.7} />
           </g>
         </g>
-      </motion.g>
-
-      {/* fairy lights (between layers so they parallax mid-way) */}
-      <motion.g style={mid}>
         <path ref={fairyRef} d={FAIRY_PATH} stroke="#3B2A1E" strokeWidth={1.5} fill="none" />
         {bulbPts.map((p, i) => (
           <g key={i} className="scene-bulb" style={{ animationDelay: `${bulbs[i].delay}s` }}>
@@ -417,10 +434,9 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
             <circle cx={p.x} cy={p.y + 7} r={3.2} fill={bulbs[i].warm ? '#FFE3A1' : '#FFF6E0'} />
           </g>
         ))}
-      </motion.g>
+      </Layer>
 
-      {/* ── Near layer: desk, things on it, Stain ────────────────────── */}
-      <motion.g style={near}>
+      <Layer offset={near}>
         {/* desk lamp */}
         <g transform="translate(470 700)">
           <ellipse cx={40} cy={-2} rx={44} ry={9} fill="#2B1B12" />
@@ -460,11 +476,6 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
           <path d="M46,-48 C66,-48 66,-18 44,-18" stroke="#E9DCC5" strokeWidth={7} fill="none" />
           <ellipse cx={24} cy={-58} rx={24} ry={5} fill="#5B341E" />
           <path d="M6,-40 L42,-40" stroke="#C8932F" strokeWidth={3} />
-          <g stroke="#fff" strokeWidth={3} strokeLinecap="round" fill="none" opacity={night ? 0.25 : 0.4}>
-            <path d="M14,-70 C6,-84 22,-94 14,-110" className="scene-steam" />
-            <path d="M28,-70 C20,-86 36,-98 28,-118" className="scene-steam" style={{ animationDelay: '1.3s' }} />
-            <path d="M38,-72 C32,-84 44,-92 38,-104" className="scene-steam" style={{ animationDelay: '2.4s' }} />
-          </g>
         </g>
 
         {/* laptop */}
@@ -480,6 +491,16 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
           </g>
         </g>
 
+      </Layer>
+
+      <Layer offset={near}>
+        <g transform="translate(660 700)">
+          <g stroke="#fff" strokeWidth={3} strokeLinecap="round" fill="none" opacity={night ? 0.25 : 0.4}>
+            <path d="M14,-70 C6,-84 22,-94 14,-110" className="scene-steam" />
+            <path d="M28,-70 C20,-86 36,-98 28,-118" className="scene-steam" style={{ animationDelay: '1.3s' }} />
+            <path d="M38,-72 C32,-84 44,-92 38,-104" className="scene-steam" style={{ animationDelay: '2.4s' }} />
+          </g>
+        </g>
         {/* Stain keeps watch beside the laptop */}
         <SittingCat
           coat="stain"
@@ -492,7 +513,7 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
           headTilt={cats.stainExcited ? -10 : 0}
           blinkDelay={2.2}
           onClick={onPetStain}
-          className="cursor-pointer"
+          className="pointer-events-auto cursor-pointer"
           title="Stain. Click to pet."
         />
 
@@ -503,9 +524,9 @@ export const StudyScene: React.FC<StudySceneProps> = ({ night, calm, cats, onPet
               style={{ animationDuration: `${m.dur}s`, animationDelay: `${m.delay}s` }} />
           ))}
         </g>
-      </motion.g>
+      </Layer>
 
-      <rect x={0} y={0} width={W} height={H} fill="url(#vignette)" pointerEvents="none" />
-    </svg>
+      <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 45%, transparent 55%, rgb(0 0 0 / 0.55) 100%)' }} />
+    </div>
   );
 };
