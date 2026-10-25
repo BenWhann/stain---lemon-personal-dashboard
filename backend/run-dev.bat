@@ -4,6 +4,8 @@ cd /d "%~dp0"
 
 where python >nul 2>nul
 if errorlevel 1 goto :nopython
+python -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)"
+if errorlevel 1 goto :nopython
 
 if not exist venv\Scripts\python.exe (
   echo Creating a Python virtual environment, first run only...
@@ -22,7 +24,7 @@ venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
 goto :eof
 
 :nopython
-echo Python was not found. Install Python 3.11 or newer from https://www.python.org/downloads/
+echo Python 3.10 or newer was not found. Install Python 3.12 or newer from https://www.python.org/downloads/
 echo and tick "Add python.exe to PATH" during setup, then run start-local.bat again.
 pause
 goto :eof
