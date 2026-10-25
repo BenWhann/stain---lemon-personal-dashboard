@@ -1,26 +1,34 @@
 @echo off
-title Lemon & Stain Dashboard Launcher
+title Lemon ^& Stain Dashboard Launcher
 cd /d "%~dp0"
 
 echo ==========================================================
-echo   Starting Lemon ^& Stain Dashboard Locally (No Docker)
+echo   Starting Lemon ^& Stain locally (no Docker)
 echo ==========================================================
 echo.
-
-:: 1. Launch Backend API
-echo [1/2] Preparing Backend API (FastAPI + SQLite)...
-start "Lemon & Stain - Backend API" cmd /k "cd /d "%~dp0backend" && set APP_ENV=development&& if not exist venv (python -m venv venv && call venv\Scripts\activate && pip install -r requirements.txt) else (call venv\Scripts\activate) && uvicorn main:app --reload --port 8000"
-
-:: 2. Launch Frontend Dev Server
-echo [2/2] Preparing Frontend (Vite + React)...
-start "Lemon & Stain - Frontend UI" cmd /k "cd /d "%~dp0frontend" && if not exist node_modules (npm install) && npm run dev"
-
+echo Two windows will open: the API and the website. Keep them open
+echo while you use the dashboard; close them to stop it.
 echo.
-echo Both servers are launching in separate command prompt windows!
-echo - Frontend: http://localhost:5173
-echo - Backend API Docs: http://localhost:8000/docs
-echo - Development sign-in: admin / lemon-and-stain
+
+start "Lemon & Stain - API" /d "%~dp0backend" cmd /k run-dev.bat
+start "Lemon & Stain - Website" /d "%~dp0frontend" cmd /k run-dev.bat
+
+echo Waiting for the API to finish starting (the first run installs packages)...
+set /a tries=0
+:wait
+timeout /t 3 /nobreak >nul
+curl -s -o nul http://127.0.0.1:8000/api/health
+if not errorlevel 1 goto :ready
+set /a tries+=1
+if %tries% lss 100 goto :wait
+echo The API didn't start. Check the "Lemon & Stain - API" window for an error.
+pause
+exit /b 1
+
+:ready
+timeout /t 3 /nobreak >nul
 echo.
-echo Opening dashboard in your browser in 5 seconds...
-timeout /t 5 /nobreak >nul
+echo Ready! Opening http://localhost:5173
+echo Sign in with:  admin  /  lemon-and-stain
 start http://localhost:5173
+timeout /t 8 >nul
