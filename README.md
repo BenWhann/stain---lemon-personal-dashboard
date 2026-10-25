@@ -65,7 +65,7 @@ npm run dev
 ```
 
 In development a throwaway account is created automatically: **admin / lemon-and-stain**.
-On Windows, double-click `start-local.bat`: it installs everything on first run, starts both servers in their own windows, and opens the dashboard once it is ready (needs Python 3.11+ and Node.js 20+).
+On Windows, double-click `start-local.bat`: it installs everything on first run, starts both servers in their own windows, and opens the dashboard once it is ready (needs Python 3.10+ and Node.js 20+).
 
 **With Docker** (production-like, HTTPS on https://localhost):
 
