@@ -45,6 +45,10 @@ if not settings.DATABASE_URL:
     if data_dir.exists() and os.access(str(data_dir), os.W_OK):
         settings.DATABASE_URL = "sqlite:////data/dashboard.db"
     else:
-        local_dir = Path(__file__).resolve().parent.parent / "data"
-        local_dir.mkdir(parents=True, exist_ok=True)
-        settings.DATABASE_URL = f"sqlite:///{local_dir / 'dashboard.db'}"
+        try:
+            local_dir = Path(__file__).resolve().parent.parent / "data"
+            local_dir.mkdir(parents=True, exist_ok=True)
+            settings.DATABASE_URL = f"sqlite:///{local_dir / 'dashboard.db'}"
+        except OSError:
+            # Fallback for serverless environments where local filesystem is read-only
+            settings.DATABASE_URL = "sqlite:////tmp/dashboard.db"

@@ -71,8 +71,12 @@ def _migrate_legacy_habit_days(engine: Engine, today: date) -> None:
             for idx, done in enumerate(days[:7]):
                 day = monday + timedelta(days=idx)
                 if done and day <= today:
+                    if engine.dialect.name == "sqlite":
+                        sql = "INSERT OR IGNORE INTO habit_checks(habit_id, date) VALUES(:h, :d)"
+                    else:
+                        sql = "INSERT INTO habit_checks(habit_id, date) VALUES(:h, :d) ON CONFLICT (habit_id, date) DO NOTHING"
                     conn.execute(
-                        text("INSERT OR IGNORE INTO habit_checks(habit_id, date) VALUES(:h, :d)"),
+                        text(sql),
                         {"h": habit_id, "d": day.isoformat()},
                     )
         _meta_set(conn, "habit_checks_v2", "done")
