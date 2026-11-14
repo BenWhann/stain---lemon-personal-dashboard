@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 import { StudyScene } from './art/StudyScene';
 import { LoginScreen } from './components/auth/LoginScreen';
+import { BoardView } from './components/board/BoardView';
+import { CalendarView } from './components/calendar/CalendarView';
 import { Insights } from './components/insights/Insights';
-import { Journal } from './components/journal/Journal';
+import { TodayView } from './components/journal/Journal';
 import { useXp } from './components/journal/useXp';
 import { CommandPalette } from './components/layout/CommandPalette';
 import { Parade } from './components/layout/Parade';
@@ -153,7 +155,7 @@ const Dashboard: React.FC<{ night: boolean; calm: boolean; onToggleTheme: () => 
 
   const openTask = useCallback((t: Task) => setEditing(t.id), []);
   const newTask = useCallback(() => {
-    setView('journal');
+    setView('today');
     window.setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       quickAddRef.current?.focus();
@@ -166,9 +168,11 @@ const Dashboard: React.FC<{ night: boolean; calm: boolean; onToggleTheme: () => 
       n: newTask,
       f: () => (useTimer.getState().running ? useTimer.getState().pause() : useTimer.getState().start()),
       l: onToggleTheme,
-      '1': () => setView('journal'),
-      '2': () => setView('insights'),
-      '3': () => setView('settings'),
+      '1': () => setView('today'),
+      '2': () => setView('calendar'),
+      '3': () => setView('board'),
+      '4': () => setView('insights'),
+      '5': () => setView('settings'),
     }),
     [newTask, onToggleTheme, setPaletteOpen, setView],
   );
@@ -192,7 +196,9 @@ const Dashboard: React.FC<{ night: boolean; calm: boolean; onToggleTheme: () => 
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
-            {view === 'journal' && <Journal onOpenTask={openTask} quickAddRef={quickAddRef} calm={calm} />}
+            {view === 'today' && <TodayView onOpenTask={openTask} quickAddRef={quickAddRef} calm={calm} />}
+            {view === 'calendar' && <CalendarView onOpenTask={openTask} />}
+            {view === 'board' && <BoardView onOpenTask={openTask} />}
             {view === 'insights' && <Insights />}
             {view === 'settings' && <Settings />}
           </motion.div>
@@ -213,7 +219,7 @@ const ScrollVeil: React.FC<{ view: string }> = ({ view }) => {
     <motion.div
       aria-hidden
       className="pointer-events-none fixed inset-0 z-[1]"
-      style={{ background: 'rgb(var(--shade))', opacity: view === 'journal' ? scrolled : 0.58 }}
+      style={{ background: 'rgb(var(--shade))', opacity: view === 'today' ? scrolled : 0.58 }}
     />
   );
 };

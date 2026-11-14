@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  BarChart3, BookOpen, CalendarDays, CheckCircle2, Heart, Kanban, Link2, Moon, Plus, RefreshCw, Search, Settings, Sparkles, Timer,
+  BarChart3, CalendarDays, CheckCircle2, Heart, Kanban, Moon, Plus, RefreshCw, Search, Settings, Sparkles, Timer,
 } from 'lucide-react';
 import { sfx } from '../../lib/audio';
 import { useParade } from '../../store/parade';
@@ -45,10 +45,6 @@ export const CommandPalette: React.FC<Props> = ({ onNewTask, onOpenTask, onToggl
     }
   }, [open]);
 
-  const goTo = (id: string) => {
-    setView('journal');
-    window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }), 60);
-  };
 
   const actions: Item[] = useMemo(
     () => [
@@ -61,12 +57,11 @@ export const CommandPalette: React.FC<Props> = ({ onNewTask, onOpenTask, onToggl
         run: () => (useTimer.getState().running ? useTimer.getState().pause() : useTimer.getState().start()),
       },
       { id: 'theme', label: 'Switch day and night', hint: 'L', icon: Moon, run: onToggleTheme },
-      { id: 'board', label: 'Go to the board', icon: Kanban, run: () => goTo('board') },
-      { id: 'cal', label: 'Go to the calendar', icon: CalendarDays, run: () => goTo('calendar') },
-      { id: 'study', label: 'Go to study hall', icon: BookOpen, run: () => goTo('study') },
-      { id: 'links', label: 'Go to the launchpad', icon: Link2, run: () => goTo('links') },
-      { id: 'insights', label: 'Open insights', icon: BarChart3, run: () => setView('insights') },
-      { id: 'settings', label: 'Open settings', icon: Settings, run: () => setView('settings') },
+      { id: 'today', label: 'Go to Today', hint: '1', icon: Sparkles, run: () => setView('today') },
+      { id: 'cal', label: 'Go to the calendar', hint: '2', icon: CalendarDays, run: () => setView('calendar') },
+      { id: 'board', label: 'Go to the board', hint: '3', icon: Kanban, run: () => setView('board') },
+      { id: 'insights', label: 'Open insights', hint: '4', icon: BarChart3, run: () => setView('insights') },
+      { id: 'settings', label: 'Open settings', hint: '5', icon: Settings, run: () => setView('settings') },
       { id: 'sync', label: 'Sync from Google Sheet', icon: RefreshCw, run: () => void useTasks.getState().syncSheet(true) },
       { id: 'pet-l', label: 'Pet Lemon', icon: Heart, run: () => { usePets.getState().pet('lemon'); sfx.purr('lemon'); } },
       { id: 'pet-s', label: 'Pet Stain', icon: Heart, run: () => { usePets.getState().pet('stain'); sfx.purr('stain'); } },

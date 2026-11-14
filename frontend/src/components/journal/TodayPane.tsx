@@ -8,46 +8,77 @@ import { QuickAdd } from '../tasks/QuickAdd';
 import { TaskRow } from '../tasks/TaskRow';
 import { Segmented } from '../ui/Segmented';
 
-type Lens = 'today' | 'week' | 'someday';
+export type Lens = 'today' | 'week' | 'someday';
 
-export function useTodayBuckets(tasks: Task[]) {
-  return useMemo(() => {
-    const today = todayISO();
-    const weekEnd = addDays(today, 7);
-    const open = tasks.filter((t) => !t.completed);
-    // Finished today stays visible (struck through) so progress feels real
-    const doneToday = tasks.filter((t) => t.completed && utcStampToLocalISO(t.completed_at) === today);
-    return {
-      today: open
-        .filter((t) => (t.due_date && t.due_date <= today) || t.status === 'In Progress')
-        .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? '')),
-      week: open.filter((t) => t.due_date && t.due_date > today && t.due_date <= weekEnd),
-      someday: open.filter((t) => !t.due_date || t.due_date > weekEnd),
-      doneToday,
-    };
-  }, [tasks]);
+export function calculateTodayBuckets(tasks: Task[], today = todayISO()) {
+  const weekEnd = addDays(today, 7);
+  const open = tasks.filter((t) => !t.completed);
+  
+  const overdue = open
+    .filter((t) => t.due_date && t.due_date < today)
+    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''));
+
+  const dueToday = open
+    .filter((t) => t.due_date === today || (!t.due_date && t.status === 'In Progress'))
+    .sort((a, b) => {
+      // Tasks with explicit due date today come before undated in-progress tasks
+      const dateA = a.due_date ?? '9999-99-99';
+      const dateB = b.due_date ?? '9999-99-99';
+      return dateA.localeCompare(dateB);
+    });
+
+  // Finished today stays visible (struck through) so progress feels real
+  const doneToday = tasks.filter((t) => t.completed && utcStampToLocalISO(t.completed_at) === today);
+
+  return {
+    overdue,
+    dueToday,
+    today: [...overdue, ...dueToday],
+    week: open.filter((t) => t.due_date && t.due_date > today && t.due_date <= weekEnd),
+    someday: open.filter((t) => (!t.due_date && t.status !== 'In Progress') || (t.due_date && t.due_date > weekEnd)),
+    doneToday,
+  };
 }
 
-export const TodayPane: React.FC<{ onOpen: (t: Task) => void; quickAddRef?: React.Ref<HTMLInputElement> }> = ({ onOpen, quickAddRef }) => {
+export function useTodayBuckets(tasks: Task[]) {
+  return useMemo(() => calculateTodayBuckets(tasks), [tasks]);
+}
+
+interface TodayPaneProps {
+  onOpen: (t: Task) => void;
+  quickAddRef?: React.Ref<HTMLInputElement>;
+  filterOverdueOnly?: boolean;
+}
+
+export const TodayPane: React.FC<TodayPaneProps> = ({ onOpen, quickAddRef, filterOverdueOnly }) => {
   const tasks = useTasks((s) => s.tasks);
   const loaded = useTasks((s) => s.loaded);
   const [lens, setLens] = useState<Lens>('today');
   const buckets = useTodayBuckets(tasks);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const list = lens === 'today' ? [...buckets.today, ...buckets.doneToday] : buckets[lens];
   const today = todayISO();
+
+  // If filterOverdueOnly is toggled, ensure we view today
+  const activeLens = filterOverdueOnly ? 'today' : lens;
 
   return (
     <section className="pane flex min-h-0 flex-col p-5" aria-labelledby="today-heading">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="today-heading" className="heading text-[1.6rem] leading-none">
-          Quests
-        </h2>
+        <div className="flex items-baseline gap-2">
+          <h2 id="today-heading" className="heading text-[1.6rem] leading-none">
+            Quests
+          </h2>
+          {buckets.overdue.length > 0 && (
+            <span className="rounded-full bg-ember/15 px-2 py-0.5 text-[11px] font-semibold text-ember">
+              {buckets.overdue.length} overdue
+            </span>
+          )}
+        </div>
         <Segmented<Lens>
           label="Which tasks"
           size="sm"
-          value={lens}
+          value={activeLens}
           onChange={setLens}
           options={[
             { value: 'today', label: `Today ${buckets.today.length || ''}`.trim() },
@@ -60,16 +91,53 @@ export const TodayPane: React.FC<{ onOpen: (t: Task) => void; quickAddRef?: Reac
       <QuickAdd
         ref={quickAddRef}
         className="mt-4"
-        defaults={{ due_date: lens === 'today' ? today : lens === 'week' ? addDays(today, 2) : null }}
+        defaults={{ due_date: activeLens === 'today' ? today : activeLens === 'week' ? addDays(today, 2) : null }}
       />
 
-      <ul ref={listRef} className="scroll-soft -mx-2 mt-3 min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1" data-lenis-prevent>
+      <ul ref={listRef} className="scroll-soft -mx-2 mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto px-1" data-lenis-prevent>
         <AnimatePresence initial={false} mode="popLayout">
-          {list.map((t) => (
-            <TaskRow key={t.id} task={t} onOpen={onOpen} compact />
-          ))}
+          {activeLens === 'today' ? (
+            <>
+              {buckets.overdue.length > 0 && (
+                <li key="header-overdue" className="pt-1.5 pb-0.5 px-2 text-[11px] font-semibold tracking-wider text-ember uppercase">
+                  Past Due ({buckets.overdue.length})
+                </li>
+              )}
+              {buckets.overdue.map((t) => (
+                <TaskRow key={`overdue-${t.id}`} task={t} onOpen={onOpen} compact />
+              ))}
+
+              {buckets.dueToday.length > 0 && (
+                <li key="header-today" className="pt-2.5 pb-0.5 px-2 text-[11px] font-semibold tracking-wider text-honey-deep dark:text-honey uppercase">
+                  Due Today ({buckets.dueToday.length})
+                </li>
+              )}
+              {buckets.dueToday.map((t) => (
+                <TaskRow key={`today-${t.id}`} task={t} onOpen={onOpen} compact />
+              ))}
+
+              {buckets.doneToday.length > 0 && (
+                <li key="header-done" className="pt-2.5 pb-0.5 px-2 text-[11px] font-semibold tracking-wider text-sage uppercase">
+                  Completed Today ({buckets.doneToday.length})
+                </li>
+              )}
+              {buckets.doneToday.map((t) => (
+                <TaskRow key={`done-${t.id}`} task={t} onOpen={onOpen} compact />
+              ))}
+
+              {loaded && buckets.today.length === 0 && buckets.doneToday.length === 0 && (
+                <EmptyState lens="today" />
+              )}
+            </>
+          ) : (
+            <>
+              {buckets[activeLens].map((t) => (
+                <TaskRow key={t.id} task={t} onOpen={onOpen} compact />
+              ))}
+              {loaded && buckets[activeLens].length === 0 && <EmptyState lens={activeLens} />}
+            </>
+          )}
         </AnimatePresence>
-        {loaded && list.length === 0 && <EmptyState lens={lens} />}
       </ul>
     </section>
   );

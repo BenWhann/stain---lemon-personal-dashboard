@@ -12,8 +12,9 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { Search } from 'lucide-react';
+import { CheckCircle2, Search } from 'lucide-react';
 import { sfx } from '../../lib/audio';
+import { todayISO, utcStampToLocalISO } from '../../lib/dates';
 import { completeTaskWithFlair } from '../../lib/rewards';
 import { useTasks } from '../../store/tasks';
 import { CATEGORIES, type Task, type TaskStatus } from '../../types';
@@ -40,6 +41,13 @@ export const QuestBoard: React.FC<{ onOpen: (t: Task) => void }> = ({ onOpen }) 
   const [area, setArea] = useState<string>('All');
   const [query, setQuery] = useState('');
   const [dragging, setDragging] = useState<Task | null>(null);
+
+  const today = todayISO();
+  const totalCompleted = useMemo(() => tasks.filter((t) => t.completed).length, [tasks]);
+  const completedToday = useMemo(
+    () => tasks.filter((t) => t.completed && utcStampToLocalISO(t.completed_at) === today).length,
+    [tasks, today],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -94,6 +102,14 @@ export const QuestBoard: React.FC<{ onOpen: (t: Task) => void }> = ({ onOpen }) 
           onChange={setArea}
           options={['All', ...CATEGORIES].map((c) => ({ value: c, label: c }))}
         />
+
+        <div className="flex items-center gap-1.5 rounded-full bg-sage/15 px-3 py-1.5 text-xs font-medium text-sage">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          <span>
+            {totalCompleted} completed ({completedToday} today)
+          </span>
+        </div>
+
         <label className="pane-solid ml-auto flex h-10 w-full items-center gap-2 !rounded-full px-4 sm:w-72">
           <Search className="h-4 w-4 text-ink-faint" />
           <span className="sr-only">Search tasks</span>

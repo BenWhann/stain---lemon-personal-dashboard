@@ -7,7 +7,9 @@ logger = logging.getLogger("lemon_stain")
 
 db_url = settings.DATABASE_URL
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 is_sqlite = db_url.startswith("sqlite")
 connect_args = {"check_same_thread": False} if is_sqlite else {}
@@ -32,7 +34,21 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+_db_initialized = False
+
+
+def ensure_db():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            init_db()
+        except Exception as e:
+            logger.warning("ensure_db error: %s", e)
+        _db_initialized = True
+
+
 def get_db():
+    ensure_db()
     db = SessionLocal()
     try:
         yield db

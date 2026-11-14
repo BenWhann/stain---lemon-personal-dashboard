@@ -217,7 +217,7 @@ export const Settings: React.FC = () => {
             ['N', 'New task'],
             ['F', 'Start or pause the focus timer'],
             ['L', 'Switch between day and night'],
-            ['1 / 2 / 3', 'Journal, Insights, Settings'],
+            ['1 / 2 / 3 / 4 / 5', 'Today, Calendar, Board, Insights, Settings'],
           ].map(([k, v]) => (
             <React.Fragment key={k}>
               <dt>
