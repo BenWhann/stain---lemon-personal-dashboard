@@ -31,10 +31,11 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(({ task, onOpen, 
       exit={{ opacity: 0, x: -30, transition: { duration: 0.25 } }}
       transition={{ type: 'spring', stiffness: 360, damping: 32 }}
       className={cx(
-        'group relative flex cursor-pointer items-start gap-3 rounded-2xl px-3 transition-colors duration-300',
+        'group relative flex cursor-pointer items-start gap-3 rounded-xl px-3 transition-all duration-200',
         compact ? 'py-2.5' : 'py-3',
-        'hover:bg-ink/[0.05]',
-        linked && 'bg-honey/[0.08] ring-1 ring-honey/30',
+        'hover:bg-ink/[0.04] hover:ring-1 hover:ring-ink/[0.07] hover:shadow-card',
+        linked && 'bg-honey/[0.09] ring-1 ring-honey/40',
+        task.completed && 'task-completed',
       )}
       onClick={() => onOpen(task)}
     >

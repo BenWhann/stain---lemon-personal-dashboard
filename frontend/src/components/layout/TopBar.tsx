@@ -63,14 +63,14 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
           <span className="heading hidden text-xl text-honey sm:block">Lemon &amp; Stain</span>
         </button>
 
-        <nav aria-label="Main" className="relative flex items-center gap-0.5 rounded-full bg-ink/[0.06] p-1">
+        <nav aria-label="Main" className="relative flex items-center gap-0.5 rounded-full bg-ink/[0.06] p-1 border border-ink/[0.04]">
           {pill.rect && (
             <motion.span
               aria-hidden
-              className="absolute bottom-1 left-0 top-1 rounded-full bg-night/60 shadow-glow dark:bg-night/80"
+              className="absolute bottom-1 left-0 top-1 rounded-full bg-surface shadow-card border border-ink/[0.08] dark:bg-surface-strong dark:border-line/20"
               initial={false}
               animate={{ x: pill.rect.x, width: pill.rect.w }}
-              transition={{ type: 'spring', stiffness: 400, damping: 34 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 34 }}
             />
           )}
           {NAV.map((n) => {
@@ -82,9 +82,12 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
                 type="button"
                 onClick={() => setView(n.id)}
                 aria-current={active ? 'page' : undefined}
-                className={cx('relative rounded-full px-2.5 py-1.5 text-[13px] transition-colors sm:px-5 sm:text-sm', active ? 'text-ink' : 'text-ink-soft hover:text-ink')}
+                className={cx(
+                  'relative rounded-full px-2.5 py-1.5 text-[13px] font-medium transition-all sm:px-5 sm:text-sm',
+                  active ? 'text-ink font-semibold' : 'text-ink-soft hover:text-ink'
+                )}
               >
-                <span className={cx('relative', active && 'text-honey')}>{n.label}</span>
+                <span className={cx('relative', active && 'text-honey-deep dark:text-honey')}>{n.label}</span>
               </button>
             );
           })}

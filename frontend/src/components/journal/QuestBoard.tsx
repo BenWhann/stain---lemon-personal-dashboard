@@ -199,8 +199,9 @@ const Card: React.FC<{ task: Task; lifted?: boolean }> = ({ task, lifted }) => {
   return (
     <div
       className={cx(
-        'rounded-2xl bg-surface-strong/80 p-3.5 ring-1 ring-ink/[0.06] transition-shadow hover:ring-honey/40',
-        lifted && 'rotate-2 shadow-lift ring-honey/60',
+        'rounded-xl bg-surface-strong/85 p-3.5 border border-ink/[0.08] shadow-card transition-all duration-200 hover:border-honey/40 hover:shadow-lift',
+        lifted && 'rotate-2 shadow-lift ring-1 ring-honey/60',
+        task.completed && 'task-completed',
       )}
     >
       <p className={cx('text-[15px] leading-snug', task.completed ? 'text-ink-faint line-through' : 'text-ink')}>{task.title}</p>

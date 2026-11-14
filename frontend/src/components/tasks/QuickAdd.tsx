@@ -51,7 +51,7 @@ export const QuickAdd = forwardRef<HTMLInputElement, QuickAddProps>(({ defaults,
 
   return (
     <div className={className}>
-      <label className="group flex items-center gap-2.5 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 ring-1 ring-transparent transition-all duration-300 focus-within:bg-ink/[0.07] focus-within:ring-honey/50">
+      <label className="group flex items-center gap-2.5 rounded-xl bg-ink/[0.04] px-3.5 py-2.5 border border-ink/[0.08] shadow-sm transition-all duration-200 focus-within:bg-ink/[0.06] focus-within:border-honey/60 focus-within:ring-2 focus-within:ring-honey/20">
         <Plus className="h-4 w-4 text-ink-faint transition-transform duration-300 group-focus-within:rotate-90 group-focus-within:text-honey" />
         <span className="sr-only">New task</span>
         <input

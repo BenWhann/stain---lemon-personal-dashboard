@@ -52,7 +52,10 @@ export const StudyHall: React.FC = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[1fr_7rem_auto]"
+                  className={cx(
+                    'group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 py-3 px-2 rounded-xl transition-all duration-200 hover:bg-ink/[0.04]',
+                    a.status === 'Completed' && 'task-completed'
+                  )}
                 >
                   <div className="min-w-0">
                     <p className={cx('text-[15px]', a.status === 'Completed' ? 'text-ink-faint line-through' : 'text-ink')}>{a.name}</p>

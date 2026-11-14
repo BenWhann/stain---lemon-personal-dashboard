@@ -79,18 +79,18 @@ export const CatHead: React.FC<CatHeadProps> = ({
 
       {/* Ears */}
       <g className="cat-ear cat-ear-l">
-        <path d={EAR_L} fill={coat.base} />
+        <path d={EAR_L} fill={coat.base} stroke={coat.outline} strokeWidth={2.4} strokeLinejoin="round" />
         <path d={EAR_L_IN} fill={coat.innerEar} opacity={0.9} />
         {isLemon && <path d="M-40,-63 C-38,-67 -34,-67 -31,-64 L-35,-58Z" fill={coat.marking} />}
       </g>
       <g className="cat-ear cat-ear-r">
-        <path d={EAR_R} fill={coat.base} />
+        <path d={EAR_R} fill={coat.base} stroke={coat.outline} strokeWidth={2.4} strokeLinejoin="round" />
         <path d={EAR_R_IN} fill={coat.innerEar} opacity={0.9} />
         {isLemon && <path d="M40,-63 C38,-67 34,-67 31,-64 L35,-58Z" fill={coat.marking} />}
       </g>
 
       {/* Skull and markings */}
-      <path d={HEAD} fill={coat.base} />
+      <path d={HEAD} fill={coat.base} stroke={coat.outline} strokeWidth={2.4} strokeLinejoin="round" />
       <g clipPath={`url(#${uid}-head)`}>
         {isLemon ? (
           <>
@@ -108,6 +108,14 @@ export const CatHead: React.FC<CatHeadProps> = ({
               <path d="M31,-6 C36,-9 40,-10 44,-9" strokeWidth={1.6} />
             </g>
             <path d={LEMON_BLAZE} fill={coat.white} />
+            {coat.chinYellow && (
+              <>
+                {/* soft yellow wash on chin */}
+                <ellipse cx={0} cy={34} rx={12} ry={8} fill={coat.chinYellow} opacity={0.88} />
+                {/* subtle yellow dusting around the nose */}
+                <ellipse cx={0} cy={16} rx={11} ry={8} fill={coat.chinYellow} opacity={0.35} />
+              </>
+            )}
             {/* peachy freckles beside the nose */}
             <g fill={coat.freckle} opacity={0.75}>
               <ellipse cx={-11} cy={17} rx={3.4} ry={2.4} />

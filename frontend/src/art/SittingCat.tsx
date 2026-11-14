@@ -98,7 +98,7 @@ export const SittingCat: React.FC<SittingCatProps> = ({
 
       {/* Body (breathes) */}
       <g className="cat-breathe">
-        <path d={BODY} fill={coat.base} />
+        <path d={BODY} fill={coat.base} stroke={coat.outline} strokeWidth={2.6} strokeLinejoin="round" />
         <g clipPath={`url(#${uid}-body)`}>
           {isLemon ? (
             <>

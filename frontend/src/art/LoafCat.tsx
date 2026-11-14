@@ -64,7 +64,7 @@ export const LoafCat: React.FC<LoafCatProps> = ({
       <ellipse cx={124} cy={140} rx={96} ry={6} fill="#000" opacity={0.25} />
 
       <g className="cat-sleep-breathe">
-        <path d={BODY} fill={coat.base} />
+        <path d={BODY} fill={coat.base} stroke={coat.outline} strokeWidth={2.6} strokeLinejoin="round" />
         <g clipPath={`url(#${uid}-body)`}>
           {isLemon ? (
             <>

@@ -11,9 +11,9 @@ export const CATEGORY_ICON: Record<string, React.FC<{ className?: string }>> = {
 };
 
 export const PRIORITY_META: Record<string, { label: string; hint: string; tone: string; Icon: React.FC<{ className?: string }> }> = {
-  Zoomies: { label: 'Zoomies', hint: 'High priority', tone: 'text-ember bg-ember/15', Icon: Zap },
-  'Purr-fect': { label: 'Purr-fect', hint: 'Normal priority', tone: 'text-honey-deep dark:text-honey bg-honey/15', Icon: Coffee },
-  Catnap: { label: 'Catnap', hint: 'Low priority', tone: 'text-sage bg-sage/15', Icon: Moon },
+  Zoomies: { label: 'Zoomies', hint: 'High priority', tone: 'text-ember bg-ember/15 border border-ember/20', Icon: Zap },
+  'Purr-fect': { label: 'Purr-fect', hint: 'Normal priority', tone: 'text-honey-deep dark:text-honey bg-honey/15 border border-honey/20', Icon: Coffee },
+  Catnap: { label: 'Catnap', hint: 'Low priority', tone: 'text-sage bg-sage/15 border border-sage/20', Icon: Moon },
 };
 
 export const PriorityChip: React.FC<{ priority: string; className?: string }> = ({ priority, className }) => {
@@ -33,16 +33,16 @@ export const DueChip: React.FC<{ due: string | null | undefined; done?: boolean 
   return (
     <span
       className={cx(
-        'chip',
+        'chip border',
         done
-          ? 'bg-ink/5 text-ink-faint'
+          ? 'bg-ink/5 text-ink-faint border-ink/10'
           : urgency === 'overdue'
-            ? 'bg-ember/15 text-ember'
+            ? 'bg-ember/15 text-ember border-ember/25'
             : urgency === 'today'
-              ? 'bg-honey/20 text-honey-deep dark:text-honey'
+              ? 'bg-honey/20 text-honey-deep dark:text-honey border-honey/30'
               : urgency === 'soon'
-                ? 'bg-caramel/15 text-caramel'
-                : 'bg-ink/[0.06] text-ink-soft',
+                ? 'bg-caramel/15 text-caramel border-caramel/25'
+                : 'bg-ink/[0.05] text-ink-soft border-ink/[0.08]',
       )}
     >
       {text}

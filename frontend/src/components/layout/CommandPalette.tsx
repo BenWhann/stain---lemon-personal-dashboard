@@ -96,18 +96,18 @@ export const CommandPalette: React.FC<Props> = ({ onNewTask, onOpenTask, onToggl
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[75] flex items-start justify-center px-4 pt-[14vh]" data-lenis-prevent>
-          <motion.div className="absolute inset-0 bg-night/45 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={close} />
+          <motion.div className="absolute inset-0 bg-night/50 backdrop-blur-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={close} />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-label="Quick actions"
-            className="pane-solid relative w-full max-w-xl overflow-hidden !p-0"
+            className="pane-solid relative w-full max-w-xl overflow-hidden !p-0 shadow-2xl border border-ink/[0.08]"
             initial={{ opacity: 0, y: -16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
           >
-            <div className="flex items-center gap-3 border-b border-ink/10 px-5 py-4">
+            <div className="flex items-center gap-3 border-b border-ink/[0.08] px-5 py-4">
               <Search className="h-5 w-5 text-ink-faint" />
               <input
                 ref={inputRef}

@@ -56,7 +56,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, description,
       {open && (
         <div className="fixed inset-0 z-[70] grid place-items-center p-4" data-lenis-prevent>
           <motion.div
-            className="absolute inset-0 bg-night/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-night/50 backdrop-blur-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -67,7 +67,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, description,
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className={cx('pane-solid relative w-full p-6 sm:p-7', WIDTH[width])}
+            className={cx('pane-solid relative w-full p-6 sm:p-7 shadow-2xl border border-ink/[0.08]', WIDTH[width])}
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}

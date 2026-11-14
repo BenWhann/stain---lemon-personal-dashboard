@@ -19,6 +19,7 @@ export interface Coat {
   marking2: string;    // secondary brindle
   white: string;       // white fur (Lemon only; Stain uses caramel)
   whiteShade: string;
+  chinYellow?: string; // Lemon: yellow on chin and around nose
   innerEar: string;
   nose: string;
   noseShade: string;
@@ -32,39 +33,40 @@ export interface Coat {
 export const COATS: Record<CoatName, Coat> = {
   lemon: {
     name: 'lemon',
-    base: '#8C6D52',
-    baseShade: '#6B5040',
-    baseLight: '#B08E6E',
-    marking: '#3F2C21',
-    marking2: '#5A4030',
-    white: '#F8F2E8',
-    whiteShade: '#DCCDBA',
-    innerEar: '#E2A99B',
-    nose: '#E59C91',
-    noseShade: '#C97B70',
-    iris: '#A9C36B',
-    irisEdge: '#6E8A3C',
-    freckle: '#D9874E',
+    base: '#A47950',
+    baseShade: '#7D5837',
+    baseLight: '#C4986C',
+    marking: '#442E20',
+    marking2: '#5E402D',
+    white: '#FAF5EC',
+    whiteShade: '#DED1C0',
+    chinYellow: '#E5B865',
+    innerEar: '#E4A496',
+    nose: '#E89C92',
+    noseShade: '#C9776D',
+    iris: '#9AB85B',
+    irisEdge: '#658236',
+    freckle: '#D49B55',
     whisker: 'rgba(255,250,240,0.85)',
-    outline: '#2A1D16',
+    outline: '#261B14',
   },
   stain: {
     name: 'stain',
-    base: '#231A16',
-    baseShade: '#150F0D',
-    baseLight: '#3B2C24',
-    marking: '#B4733C',
-    marking2: '#7E4626',
-    white: '#C88A4E',
-    whiteShade: '#9A6234',
-    innerEar: '#8A5A57',
-    nose: '#1B1311',
-    noseShade: '#0E0908',
-    iris: '#CDB84C',
-    irisEdge: '#7F8A2E',
-    freckle: '#C98447',
-    whisker: 'rgba(245,230,210,0.42)',
-    outline: '#0D0908',
+    base: '#221915',
+    baseShade: '#140E0C',
+    baseLight: '#35261F',
+    marking: '#8E5F3D',       /* muted earthy caramel (less orange/yellow) */
+    marking2: '#653F28',      /* deep toasted umber */
+    white: '#9A6E4B',         /* soft muted caramel blaze */
+    whiteShade: '#754E30',
+    innerEar: '#7C524F',
+    nose: '#181210',
+    noseShade: '#0C0807',
+    iris: '#B39F48',          /* muted antique olive-gold */
+    irisEdge: '#6F772D',
+    freckle: '#8E5F3D',
+    whisker: 'rgba(240,225,205,0.4)',
+    outline: '#0E0908',
   },
 };
 
