@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight, Clock, MapPin, Plus, Trash2 } from 'lucide-r
 import { formatLong, toISODate, todayISO } from '../../lib/dates';
 import { useEvents } from '../../store/events';
 import { useTasks } from '../../store/tasks';
-import { EVENT_CATEGORIES, type CalendarEvent, type EventCategory } from '../../types';
+import { EVENT_CATEGORIES, type CalendarEvent, type EventCategory, type Task } from '../../types';
 import { Modal } from '../ui/Modal';
 import { cx } from '../ui/cx';
+import { QuickAdd } from '../tasks/QuickAdd';
 
 // Fixed categorical order (validated for colour-vision deficiency in both themes)
 const CATEGORY_COLOR: Record<string, string> = {
@@ -18,7 +19,7 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 const dot = (category: string): React.CSSProperties => ({ background: CATEGORY_COLOR[category] ?? 'rgb(var(--ink-faint))' });
 
-export const CalendarSection: React.FC = () => {
+export const CalendarSection: React.FC<{ onOpenTask?: (t: Task) => void }> = ({ onOpenTask }) => {
   const events = useEvents((s) => s.events);
   const remove = useEvents((s) => s.remove);
   const tasks = useTasks((s) => s.tasks);
@@ -172,7 +173,15 @@ export const CalendarSection: React.FC = () => {
             <Plus className="h-3.5 w-3.5" /> Event
           </button>
         </div>
-        <ul className="scroll-soft mt-4 max-h-[22rem] flex-1 space-y-2 overflow-y-auto" data-lenis-prevent>
+
+        <div className="mt-3">
+          <QuickAdd
+            defaults={{ due_date: selected }}
+            className="text-xs"
+          />
+        </div>
+
+        <ul className="scroll-soft mt-3 max-h-[22rem] flex-1 space-y-2 overflow-y-auto" data-lenis-prevent>
           <AnimatePresence initial={false}>
             {dayEvents.map((e) => (
               <motion.li
@@ -210,9 +219,21 @@ export const CalendarSection: React.FC = () => {
             ))}
           </AnimatePresence>
           {dayTasks.map((t) => (
-            <li key={`t${t.id}`} className="flex items-center gap-3 rounded-2xl border border-dashed border-ink/15 px-3 py-2.5 text-sm">
-              <span className={cx('h-2 w-2 rounded-full', t.completed ? 'bg-sage' : 'bg-ink/30')} />
-              <span className={t.completed ? 'text-ink-faint line-through' : 'text-ink-soft'}>Due: {t.title}</span>
+            <li
+              key={`t${t.id}`}
+              onClick={() => onOpenTask?.(t)}
+              className={cx(
+                'flex items-center justify-between gap-3 rounded-2xl border border-dashed border-ink/15 px-3 py-2.5 text-sm transition-colors',
+                onOpenTask && 'cursor-pointer hover:border-honey/40 hover:bg-honey/[0.04]',
+              )}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className={cx('h-2 w-2 shrink-0 rounded-full', t.completed ? 'bg-sage' : 'bg-honey')} />
+                <span className={cx('truncate', t.completed ? 'text-ink-faint line-through' : 'text-ink-soft')}>
+                  Due: {t.title}
+                </span>
+              </div>
+              <span className="text-[10px] text-ink-faint shrink-0 uppercase">{t.priority}</span>
             </li>
           ))}
           {dayEvents.length === 0 && dayTasks.length === 0 && (

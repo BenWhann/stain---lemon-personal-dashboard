@@ -28,7 +28,7 @@ export const useUi = create<UiState>()(
       motion: 'full',
       sound: true,
       ambience: { rain: 0, fire: 0, library: 0, purr: 0, keys: 0 },
-      view: 'journal',
+      view: 'today',
       paletteOpen: false,
       setTheme: (theme) => set({ theme }),
       setMotion: (motion) => set({ motion }),
@@ -39,9 +39,16 @@ export const useUi = create<UiState>()(
     }),
     {
       name: 'lemon-stain-ui',
-      version: 1,
+      version: 2,
       // Ambience always starts silent: browsers block audio until the user interacts.
       partialize: (s) => ({ theme: s.theme, motion: s.motion, sound: s.sound, view: s.view }),
+      migrate: (persisted: unknown, version: number) => {
+        const state = (persisted || {}) as Record<string, unknown>;
+        if (version < 2 && state.view === 'journal') {
+          state.view = 'today';
+        }
+        return state as unknown as UiState;
+      },
     },
   ),
 );

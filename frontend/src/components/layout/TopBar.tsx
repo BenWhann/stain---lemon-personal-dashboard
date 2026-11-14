@@ -8,7 +8,9 @@ import { cx } from '../ui/cx';
 import { usePill } from '../ui/usePill';
 
 const NAV: { id: View; label: string }[] = [
-  { id: 'journal', label: 'Journal' },
+  { id: 'today', label: 'Today' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'board', label: 'Board' },
   { id: 'insights', label: 'Insights' },
   { id: 'settings', label: 'Settings' },
 ];
@@ -54,7 +56,7 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
   return (
     <header className="fixed inset-x-0 top-0 z-40 px-2 pt-3 sm:px-8">
       <div className="pane mx-auto flex h-14 max-w-[1480px] items-center justify-between gap-1.5 !rounded-full px-2 sm:gap-3 sm:px-4">
-        <button type="button" className="flex items-center gap-2.5" onClick={() => setView('journal')} aria-label="Lemon & Stain, home">
+        <button type="button" className="flex items-center gap-2.5" onClick={() => setView('today')} aria-label="Lemon & Stain, home">
           <motion.span whileHover={{ rotate: -14, scale: 1.08 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}>
             <BrandMark className="h-8 w-8" />
           </motion.span>

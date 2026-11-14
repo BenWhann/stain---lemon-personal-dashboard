@@ -100,4 +100,4 @@ export interface User {
   display_name: string;
 }
 
-export type View = 'journal' | 'insights' | 'settings';
+export type View = 'today' | 'calendar' | 'board' | 'insights' | 'settings';
