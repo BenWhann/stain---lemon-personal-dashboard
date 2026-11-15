@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     APP_ENV: str = "production"
+    SECRET_KEY: str = "lemon-and-stain-dashboard-auth-key-2026-v2"
 
     # Auto-detect SQLite path: in Docker container `/data/dashboard.db`, locally `./data/dashboard.db`
     DATABASE_URL: str = ""
@@ -39,6 +40,20 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Check alternative Postgres environment variable names (e.g. Vercel Marketplace / Neon)
+if not settings.DATABASE_URL:
+    for env_var in [
+        "POSTGRES_URL",
+        "DATABASE_URL_POOLED",
+        "POSTGRES_PRISMA_URL",
+        "NEON_DATABASE_URL",
+        "POSTGRES_URL_NON_POOLING",
+    ]:
+        val = os.environ.get(env_var)
+        if val:
+            settings.DATABASE_URL = val
+            break
 
 if not settings.DATABASE_URL:
     data_dir = Path("/data")

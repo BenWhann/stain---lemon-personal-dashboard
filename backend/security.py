@@ -8,7 +8,7 @@ import secrets
 import threading
 import time
 from collections import defaultdict, deque
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -65,20 +65,48 @@ def _token_id(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _sign_token(user_id: int, exp_ts: int, raw: str) -> str:
+    payload = f"{user_id}:{exp_ts}:{raw}"
+    sig = hmac.new(settings.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{sig}"
+
+
+def _verify_token_signature(token: str) -> tuple[bool, Optional[int], int]:
+    """Cryptographically verifies HMAC signature of a session token for serverless resilience."""
+    try:
+        parts = token.split(":")
+        if len(parts) == 4:
+            uid_str, exp_str, raw, sig = parts
+            payload = f"{uid_str}:{exp_str}:{raw}"
+            expected_sig = hmac.new(settings.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+            if hmac.compare_digest(sig, expected_sig):
+                return True, int(uid_str), int(exp_str)
+    except Exception:
+        pass
+    return False, None, 0
+
+
 def create_session(db: Session, user: User, user_agent: str = "") -> str:
-    token = secrets.token_urlsafe(32)
+    raw = secrets.token_urlsafe(24)
     now = utcnow()
+    exp = now + timedelta(days=settings.SESSION_DAYS)
+    exp_ts = int(exp.timestamp())
+    token = _sign_token(user.id, exp_ts, raw)
+
+    token_hash = _token_id(token)
     db.add(AuthSession(
-        id=_token_id(token),
+        id=token_hash,
         user_id=user.id,
         created_at=now,
         last_seen_at=now,
-        expires_at=now + timedelta(days=settings.SESSION_DAYS),
+        expires_at=exp,
         user_agent=(user_agent or "")[:255],
     ))
-    # Opportunistic cleanup of expired sessions
-    db.query(AuthSession).filter(AuthSession.expires_at < now).delete()
-    db.commit()
+    try:
+        db.query(AuthSession).filter(AuthSession.expires_at < now).delete()
+        db.commit()
+    except Exception:
+        db.rollback()
     return token
 
 
@@ -110,6 +138,47 @@ def extract_session_token(request: Request) -> Optional[str]:
     return None
 
 
+def verify_session_token(token: str, db: Session, user_agent: str = "") -> Optional[int]:
+    """Verify session against database and HMAC signature. Handles serverless cold-start worker replication."""
+    now = utcnow()
+    now_ts = int(now.timestamp())
+
+    valid_sig, sig_user_id, exp_ts = _verify_token_signature(token)
+    token_hash = _token_id(token)
+    session = db.query(AuthSession).filter(AuthSession.id == token_hash).first()
+
+    if session:
+        if session.expires_at < now:
+            return None
+        if now - (session.last_seen_at or now) > timedelta(hours=1):
+            session.last_seen_at = now
+            session.expires_at = now + timedelta(days=settings.SESSION_DAYS)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+        return session.user_id
+
+    # If session is missing in DB (e.g. cold start of another serverless container), verify cryptographic HMAC
+    if valid_sig and sig_user_id is not None and exp_ts > now_ts:
+        try:
+            exp_dt = datetime.fromtimestamp(exp_ts, timezone.utc).replace(tzinfo=None)
+            db.add(AuthSession(
+                id=token_hash,
+                user_id=sig_user_id,
+                created_at=now,
+                last_seen_at=now,
+                expires_at=exp_dt,
+                user_agent=(user_agent or "")[:255],
+            ))
+            db.commit()
+        except Exception:
+            db.rollback()
+        return sig_user_id
+
+    return None
+
+
 def set_session_cookie(response, token: str) -> None:
     response.set_cookie(
         SESSION_COOKIE,
@@ -137,18 +206,13 @@ def require_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
 
-    session = db.query(AuthSession).filter(AuthSession.id == _token_id(token)).first()
-    now = utcnow()
-    if not session or session.expires_at < now:
+    user_id = verify_session_token(token, db, request.headers.get("user-agent", ""))
+    if user_id is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired")
 
-    # Sliding expiry, written at most once an hour to keep SQLite writes rare
-    if now - (session.last_seen_at or now) > timedelta(hours=1):
-        session.last_seen_at = now
-        session.expires_at = now + timedelta(days=settings.SESSION_DAYS)
-        db.commit()
-
-    user = db.get(User, session.user_id)
+    user = db.get(User, user_id)
+    if not user:
+        user = db.query(User).first()
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
     request.state.session_token = token

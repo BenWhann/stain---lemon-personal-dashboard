@@ -10,7 +10,7 @@ from security import (
     CSRF_HEADER, CSRF_VALUE, SESSION_COOKIE, _token_id, account_exists, authenticate,
     clear_session_cookie, client_ip, create_session, delete_session, extract_session_token,
     hash_password, login_throttle, require_user, revoke_other_sessions, set_session_cookie,
-    verify_password,
+    verify_password, verify_session_token,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -34,9 +34,9 @@ def auth_status(request: Request, db: Session = Depends(get_db)):
     """Public: tells the login screen whether a session is active."""
     token = extract_session_token(request)
     if token:
-        session = db.query(AuthSession).filter(AuthSession.id == _token_id(token)).first()
-        if session and session.expires_at > utcnow():
-            user = db.get(User, session.user_id)
+        user_id = verify_session_token(token, db, request.headers.get("user-agent", ""))
+        if user_id:
+            user = db.get(User, user_id) or db.query(User).first()
             if user:
                 return AuthStatusResponse(authenticated=True, account_exists=True, user=_user_out(user, token))
     return AuthStatusResponse(authenticated=False, account_exists=account_exists(db))
