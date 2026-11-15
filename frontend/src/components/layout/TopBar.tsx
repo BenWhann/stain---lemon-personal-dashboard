@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Command, LogOut, Moon, Search, Sun, Volume2, VolumeX } from 'lucide-react';
+import { Command, LogOut, Moon, Search, SlidersHorizontal, Sun, Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '../../store/auth';
 import { useUi } from '../../store/ui';
+import { useWidgets } from '../../store/widgets';
 import type { View } from '../../types';
 import { cx } from '../ui/cx';
 import { usePill } from '../ui/usePill';
@@ -36,6 +37,7 @@ export const BrandMark: React.FC<{ className?: string }> = ({ className }) => (
 
 export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = ({ night, onToggleTheme }) => {
   const { view, setView, sound, setSound, setPaletteOpen } = useUi();
+  const { isCustomizing, toggleCustomizing } = useWidgets();
   const { user, logout } = useAuth();
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -92,6 +94,24 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
         </nav>
 
         <div className="flex items-center gap-1.5">
+          {view === 'today' && (
+            <button
+              type="button"
+              onClick={toggleCustomizing}
+              className={cx(
+                'btn-ghost hidden h-8 !px-2.5 text-xs sm:inline-flex items-center gap-1.5 transition-colors',
+                isCustomizing
+                  ? 'bg-honey text-night font-semibold shadow-sm hover:bg-honey/90'
+                  : 'text-ink-soft hover:text-ink hover:bg-honey/15'
+              )}
+              title={isCustomizing ? 'Done customizing layout' : 'Customize dashboard layout'}
+              aria-label={isCustomizing ? 'Done customizing layout' : 'Customize dashboard layout'}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-honey-deep dark:text-honey" />
+              <span>{isCustomizing ? 'Done' : 'Customize'}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}

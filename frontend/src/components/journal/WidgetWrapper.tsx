@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Settings2, Trash2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { ArrowLeft, ArrowRight, GripVertical, Settings2, Trash2 } from 'lucide-react';
+import { sfx } from '../../lib/audio';
 import { useWidgets, WidgetConfig, WidgetWidth } from '../../store/widgets';
 import { cx } from '../ui/cx';
 import { Modal } from '../ui/Modal';
@@ -20,10 +23,95 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
   const [editTitle, setEditTitle] = useState(widget.title || '');
   const [editCategory, setEditCategory] = useState(widget.settings?.category || 'All');
 
+  const [isResizing, setIsResizing] = useState(false);
+  const [previewWidth, setPreviewWidth] = useState<WidgetWidth | null>(null);
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+
+  const activeWidth = previewWidth || widget.width;
+
   const widthClasses: Record<WidgetWidth, string> = {
     '1-col': 'col-span-1',
     '2-col': 'col-span-1 lg:col-span-2',
     '3-col': 'col-span-1 lg:col-span-3',
+  };
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: widget.id,
+    disabled: !isCustomizing || isResizing,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition: isResizing ? 'none' : transition,
+  };
+
+  const setCombinedRef = (node: HTMLDivElement | null) => {
+    widgetRef.current = node;
+    setNodeRef(node);
+  };
+
+  const handleResizePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
+    setIsResizing(true);
+
+    const startX = e.clientX;
+    const widgetEl = widgetRef.current;
+    if (!widgetEl) return;
+
+    const gridContainer = (widgetEl.closest('.bento-grid') as HTMLElement) || widgetEl.parentElement;
+    const containerWidth = gridContainer ? gridContainer.clientWidth : window.innerWidth;
+    const colWidth = Math.max(containerWidth / 3, 100);
+
+    const initialCols = widget.width === '1-col' ? 1 : widget.width === '2-col' ? 2 : 3;
+    let currentTargetWidth: WidgetWidth = widget.width;
+
+    const onPointerMove = (ev: PointerEvent) => {
+      const deltaX = ev.clientX - startX;
+      const projectedCols = initialCols + deltaX / colWidth;
+      let nextWidth: WidgetWidth;
+      if (projectedCols < 1.5) {
+        nextWidth = '1-col';
+      } else if (projectedCols < 2.5) {
+        nextWidth = '2-col';
+      } else {
+        nextWidth = '3-col';
+      }
+
+      if (nextWidth !== currentTargetWidth) {
+        currentTargetWidth = nextWidth;
+        setPreviewWidth(nextWidth);
+        try {
+          sfx.pop();
+        } catch {}
+      }
+    };
+
+    const onPointerUp = () => {
+      try {
+        target.releasePointerCapture(e.pointerId);
+      } catch {}
+      target.removeEventListener('pointermove', onPointerMove);
+      target.removeEventListener('pointerup', onPointerUp);
+      setIsResizing(false);
+      setPreviewWidth(null);
+      if (currentTargetWidth !== widget.width) {
+        setWidth(widget.id, currentTargetWidth);
+      }
+    };
+
+    target.addEventListener('pointermove', onPointerMove);
+    target.addEventListener('pointerup', onPointerUp);
   };
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -40,17 +128,30 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
 
   return (
     <div
+      ref={setCombinedRef}
+      style={style}
       className={cx(
-        'relative flex flex-col transition-colors duration-150',
-        widthClasses[widget.width],
-        isCustomizing && 'border border-honey/40 rounded-md p-1 bg-honey/[0.02]',
+        'relative flex flex-col transition-all duration-150',
+        widthClasses[activeWidth],
+        isDragging && 'opacity-30 ring-2 ring-dashed ring-honey/70 rounded-md scale-[0.98]',
+        isCustomizing && !isDragging && 'border border-honey/40 rounded-md p-1 bg-honey/[0.02]',
+        isResizing && 'ring-2 ring-honey shadow-lg',
       )}
     >
       {isCustomizing && (
-        <div className="mb-1.5 flex items-center justify-between rounded bg-ink/[0.05] px-2 py-1 text-xs text-ink border border-line/15">
-          <span className="font-medium text-xs text-honey-deep dark:text-honey truncate max-w-[120px]">
-            {widget.title || widget.type}
-          </span>
+        <div className="mb-1.5 flex items-center justify-between rounded bg-ink/[0.05] px-2 py-1 text-xs text-ink border border-line/15 select-none">
+          {/* Draggable Title & Grip Handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing hover:bg-honey/15 px-1.5 py-0.5 rounded transition-colors text-ink group"
+            title="Click and drag to reorder"
+          >
+            <GripVertical className="h-3.5 w-3.5 text-honey-deep dark:text-honey group-hover:scale-110 transition-transform" />
+            <span className="font-semibold text-xs text-honey-deep dark:text-honey truncate max-w-[130px]">
+              {widget.title || widget.type}
+            </span>
+          </div>
 
           <div className="flex items-center gap-1">
             <div className="inline-flex items-center rounded border border-line/20 bg-surface p-0.5 text-xs">
@@ -61,8 +162,9 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
                   onClick={() => setWidth(widget.id, w)}
                   className={cx(
                     'px-1.5 py-0.5 rounded transition-colors',
-                    widget.width === w ? 'bg-honey text-night font-semibold' : 'text-ink-soft hover:text-ink',
+                    activeWidth === w ? 'bg-honey text-night font-semibold' : 'text-ink-soft hover:text-ink',
                   )}
+                  title={`Resize to ${w === '1-col' ? '1 column' : w === '2-col' ? '2 columns' : 'full width'}`}
                 >
                   {w === '1-col' ? '1 col' : w === '2-col' ? '2 col' : 'Full'}
                 </button>
@@ -109,9 +211,49 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
       )}
 
       {/* Widget Content Card */}
-      <div className="pane flex-1 p-4 flex flex-col min-h-0">
+      <div className="pane flex-1 p-4 flex flex-col min-h-0 relative">
         {children}
       </div>
+
+      {/* Interactive Drag-to-Resize Handles */}
+      {isCustomizing && (
+        <>
+          {/* Right Edge Horizontal Drag Handle */}
+          <div
+            onPointerDown={handleResizePointerDown}
+            className={cx(
+              'absolute top-0 right-0 bottom-0 w-3.5 z-20 cursor-col-resize flex items-center justify-center transition-colors select-none group',
+              isResizing ? 'bg-honey/30' : 'hover:bg-honey/20',
+            )}
+            title="Drag horizontally to resize column width"
+          >
+            <div
+              className={cx(
+                'w-1 rounded-full transition-all duration-150',
+                isResizing ? 'h-16 bg-honey w-1.5' : 'h-8 bg-line/30 group-hover:bg-honey group-hover:h-12',
+              )}
+            />
+            {/* Live Indicator Tooltip during Drag */}
+            {isResizing && (
+              <div className="absolute -top-7 right-0 whitespace-nowrap rounded bg-night px-2 py-0.5 text-[10px] font-semibold text-surface shadow-md">
+                {activeWidth === '1-col' ? '1 Col (1/3)' : activeWidth === '2-col' ? '2 Cols (2/3)' : '3 Cols (Full width)'}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom-Right Corner Drag Handle */}
+          <div
+            onPointerDown={handleResizePointerDown}
+            className={cx(
+              'absolute bottom-0 right-0 h-4 w-4 z-20 cursor-se-resize flex items-center justify-center select-none text-ink-faint hover:text-honey transition-colors',
+              isResizing && 'text-honey',
+            )}
+            title="Drag to resize"
+          >
+            <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-current rounded-br-[2px]" />
+          </div>
+        </>
+      )}
 
       {/* Configure Settings Modal */}
       <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Configure widget" width="sm">
