@@ -21,13 +21,11 @@ export function calculateTodayBuckets(tasks: Task[], today = todayISO()) {
   const dueToday = open
     .filter((t) => t.due_date === today || (!t.due_date && t.status === 'In Progress'))
     .sort((a, b) => {
-      // Tasks with explicit due date today come before undated in-progress tasks
       const dateA = a.due_date ?? '9999-99-99';
       const dateB = b.due_date ?? '9999-99-99';
       return dateA.localeCompare(dateB);
     });
 
-  // Finished today stays visible (struck through) so progress feels real
   const doneToday = tasks.filter((t) => t.completed && utcStampToLocalISO(t.completed_at) === today);
 
   return {
@@ -48,58 +46,84 @@ interface TodayPaneProps {
   onOpen: (t: Task) => void;
   quickAddRef?: React.Ref<HTMLInputElement>;
   filterOverdueOnly?: boolean;
+  title?: string;
+  categoryFilter?: string;
+  lensOverride?: Lens;
+  hideSegmented?: boolean;
+  embedded?: boolean;
 }
 
-export const TodayPane: React.FC<TodayPaneProps> = ({ onOpen, quickAddRef, filterOverdueOnly }) => {
-  const tasks = useTasks((s) => s.tasks);
+export const TodayPane: React.FC<TodayPaneProps> = ({
+  onOpen,
+  quickAddRef,
+  filterOverdueOnly,
+  title = 'Quests',
+  categoryFilter,
+  lensOverride,
+  hideSegmented,
+  embedded = false,
+}) => {
+  const allTasks = useTasks((s) => s.tasks);
   const loaded = useTasks((s) => s.loaded);
-  const [lens, setLens] = useState<Lens>('today');
-  const buckets = useTodayBuckets(tasks);
-  const listRef = useRef<HTMLUListElement>(null);
+  const [lens, setLens] = useState<Lens>(lensOverride || 'today');
 
+  const filteredTasks = useMemo(() => {
+    if (!categoryFilter || categoryFilter === 'All') return allTasks;
+    return allTasks.filter((t) => t.category === categoryFilter);
+  }, [allTasks, categoryFilter]);
+
+  const buckets = useMemo(() => calculateTodayBuckets(filteredTasks), [filteredTasks]);
+  const listRef = useRef<HTMLUListElement>(null);
   const today = todayISO();
 
-  // If filterOverdueOnly is toggled, ensure we view today
-  const activeLens = filterOverdueOnly ? 'today' : lens;
+  const activeLens = filterOverdueOnly ? 'today' : (lensOverride || lens);
 
-  return (
-    <section className="pane flex min-h-0 flex-col p-5" aria-labelledby="today-heading">
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
-          <h2 id="today-heading" className="heading text-[1.6rem] leading-none">
-            Quests
+          <h2 id="today-heading" className="heading text-xl leading-none">
+            {title}
           </h2>
+          {categoryFilter && categoryFilter !== 'All' && (
+            <span className="text-xs text-ink-faint">({categoryFilter})</span>
+          )}
           {buckets.overdue.length > 0 && (
-            <span className="rounded-full bg-ember/15 px-2 py-0.5 text-[11px] font-semibold text-ember">
+            <span className="rounded border border-ember/25 bg-ember/10 px-1.5 py-0.5 text-[11px] font-medium text-ember">
               {buckets.overdue.length} overdue
             </span>
           )}
         </div>
-        <Segmented<Lens>
-          label="Which tasks"
-          size="sm"
-          value={activeLens}
-          onChange={setLens}
-          options={[
-            { value: 'today', label: `Today ${buckets.today.length || ''}`.trim() },
-            { value: 'week', label: 'This week' },
-            { value: 'someday', label: 'Later' },
-          ]}
-        />
+        {!hideSegmented && !lensOverride && (
+          <Segmented<Lens>
+            label="Which tasks"
+            size="sm"
+            value={activeLens}
+            onChange={setLens}
+            options={[
+              { value: 'today', label: `Today ${buckets.today.length || ''}`.trim() },
+              { value: 'week', label: 'This week' },
+              { value: 'someday', label: 'Later' },
+            ]}
+          />
+        )}
       </div>
 
       <QuickAdd
         ref={quickAddRef}
-        className="mt-4"
-        defaults={{ due_date: activeLens === 'today' ? today : activeLens === 'week' ? addDays(today, 2) : null }}
+        className="mt-3"
+        defaults={{
+          due_date: activeLens === 'today' ? today : activeLens === 'week' ? addDays(today, 2) : null,
+          category: categoryFilter && categoryFilter !== 'All' ? categoryFilter : 'Grad School',
+        }}
       />
 
-      <ul ref={listRef} className="scroll-soft -mx-2 mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto px-1" data-lenis-prevent>
+      <ul ref={listRef} className="scroll-soft -mx-1 mt-3 min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1" data-lenis-prevent>
         <AnimatePresence initial={false} mode="popLayout">
           {activeLens === 'today' ? (
             <>
               {buckets.overdue.length > 0 && (
-                <li key="header-overdue" className="pt-1.5 pb-0.5 px-2 text-[11px] font-semibold tracking-wider text-ember uppercase">
+                <li key="header-overdue" className="pt-1.5 pb-0.5 px-2 text-[10px] font-semibold tracking-wider text-ember uppercase">
                   Past Due ({buckets.overdue.length})
                 </li>
               )}
@@ -108,7 +132,7 @@ export const TodayPane: React.FC<TodayPaneProps> = ({ onOpen, quickAddRef, filte
               ))}
 
               {buckets.dueToday.length > 0 && (
-                <li key="header-today" className="pt-2.5 pb-0.5 px-2 text-[11px] font-semibold tracking-wider text-honey-deep dark:text-honey uppercase">
+                <li key="header-today" className="pt-2 pb-0.5 px-2 text-[10px] font-semibold tracking-wider text-honey-deep dark:text-honey uppercase">
                   Due Today ({buckets.dueToday.length})
                 </li>
               )}
@@ -117,7 +141,7 @@ export const TodayPane: React.FC<TodayPaneProps> = ({ onOpen, quickAddRef, filte
               ))}
 
               {buckets.doneToday.length > 0 && (
-                <li key="header-done" className="pt-2.5 pb-0.5 px-2 text-[11px] font-semibold tracking-wider text-sage uppercase">
+                <li key="header-done" className="pt-2 pb-0.5 px-2 text-[10px] font-semibold tracking-wider text-sage uppercase">
                   Completed Today ({buckets.doneToday.length})
                 </li>
               )}
@@ -139,6 +163,16 @@ export const TodayPane: React.FC<TodayPaneProps> = ({ onOpen, quickAddRef, filte
           )}
         </AnimatePresence>
       </ul>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="flex h-full min-h-0 flex-col">{content}</div>;
+  }
+
+  return (
+    <section className="pane flex min-h-0 flex-col p-4 sm:p-5" aria-labelledby="today-heading">
+      {content}
     </section>
   );
 };
@@ -147,13 +181,13 @@ const EmptyState: React.FC<{ lens: Lens }> = ({ lens }) => (
   <motion.li
     initial={{ opacity: 0, y: 8 }}
     animate={{ opacity: 1, y: 0 }}
-    className="flex flex-col items-center px-6 py-8 text-center"
+    className="flex flex-col items-center px-4 py-6 text-center"
   >
-    <LoafCat coat="lemon" style={{ width: 150 }} className="text-ink-faint" title="Lemon, asleep" />
-    <p className="heading mt-3 text-lg">
+    <LoafCat coat="lemon" style={{ width: 120 }} className="text-ink-faint" title="Lemon, asleep" />
+    <p className="heading mt-2 text-base">
       {lens === 'today' ? 'Nothing due today' : lens === 'week' ? 'A quiet week ahead' : 'No someday tasks'}
     </p>
-    <p className="mt-1 text-sm text-ink-soft">
+    <p className="mt-0.5 text-xs text-ink-soft">
       {lens === 'today' ? 'Lemon approves. Add something above, or enjoy the sunbeam.' : 'Add one above when it comes to mind.'}
     </p>
   </motion.li>

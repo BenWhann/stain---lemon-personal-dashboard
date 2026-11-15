@@ -31,10 +31,10 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(({ task, onOpen, 
       exit={{ opacity: 0, x: -30, transition: { duration: 0.25 } }}
       transition={{ type: 'spring', stiffness: 360, damping: 32 }}
       className={cx(
-        'group relative flex cursor-pointer items-start gap-3 rounded-xl px-3 transition-all duration-200',
-        compact ? 'py-2.5' : 'py-3',
-        'hover:bg-ink/[0.04] hover:ring-1 hover:ring-ink/[0.07] hover:shadow-card',
-        linked && 'bg-honey/[0.09] ring-1 ring-honey/40',
+        'group relative flex cursor-pointer items-start gap-3 rounded-md px-3 border border-transparent transition-colors duration-150',
+        compact ? 'py-2' : 'py-2.5',
+        'hover:bg-ink/[0.03] hover:border-line/15',
+        linked && 'bg-honey/[0.08] border-honey/40',
         task.completed && 'task-completed',
       )}
       onClick={() => onOpen(task)}
@@ -46,65 +46,65 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(({ task, onOpen, 
         className="mt-0.5"
       />
       <div className="min-w-0 flex-1">
-        <p className="relative inline-block max-w-full text-[15px] leading-snug text-ink">
-          <span className={cx('transition-colors duration-500', task.completed && 'text-ink-faint')}>{task.title}</span>
+        <p className="relative inline-block max-w-full text-sm font-medium leading-snug text-ink">
+          <span className={cx('transition-colors duration-200', task.completed && 'text-ink-faint')}>{task.title}</span>
           <motion.span
             aria-hidden
-            className="absolute left-0 top-1/2 h-[1.5px] w-full origin-left bg-ink-faint"
+            className="absolute left-0 top-1/2 h-[1px] w-full origin-left bg-ink-faint"
             initial={false}
             animate={{ scaleX: task.completed ? 1 : 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.25 }}
           />
         </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
           <DueChip due={task.due_date} done={task.completed} />
           {task.status === 'In Progress' && !task.completed && (
-            <span className="chip bg-sage/15 text-sage">In progress</span>
+            <span className="text-xs font-medium text-sage">In progress</span>
           )}
           {!compact && <PriorityChip priority={task.priority} />}
           {compact && task.priority === 'Zoomies' && !task.completed && <PriorityChip priority="Zoomies" />}
           <CategoryLabel category={task.category} />
           {task.subtasks.length > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-ink-faint">
+            <span className="inline-flex items-center gap-1 text-xs text-ink-faint tabular">
               <ListChecks className="h-3 w-3" />
               {doneSubs}/{task.subtasks.length}
             </span>
           )}
           {task.pomodoros > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-ink-faint" title="Focus sprints spent on this">
+            <span className="inline-flex items-center gap-1 text-xs text-ink-faint tabular" title="Focus sprints spent on this">
               <Timer className="h-3 w-3" />
               {task.pomodoros}
             </span>
           )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
         {!task.completed && (
           <button
             type="button"
             title={linked ? 'Linked to the focus timer' : 'Focus on this'}
             aria-label={`Focus on "${task.title}"`}
-            className={cx('grid h-8 w-8 place-items-center rounded-full hover:bg-ink/10', linked ? 'text-honey' : 'text-ink-faint hover:text-ink')}
+            className={cx('grid h-7 w-7 place-items-center rounded-md hover:bg-ink/[0.08]', linked ? 'text-honey' : 'text-ink-faint hover:text-ink')}
             onClick={(e) => {
               e.stopPropagation();
               link(linked ? null : task.id);
               if (!linked) toast.info(`The timer is now tracking "${task.title}".`);
             }}
           >
-            <Timer className="h-4 w-4" />
+            <Timer className="h-3.5 w-3.5" />
           </button>
         )}
         <button
           type="button"
           title="Delete"
           aria-label={`Delete "${task.title}"`}
-          className="grid h-8 w-8 place-items-center rounded-full text-ink-faint hover:bg-ember/10 hover:text-ember"
+          className="grid h-7 w-7 place-items-center rounded-md text-ink-faint hover:bg-ember/15 hover:text-ember"
           onClick={(e) => {
             e.stopPropagation();
             remove(task.id);
           }}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
     </motion.li>

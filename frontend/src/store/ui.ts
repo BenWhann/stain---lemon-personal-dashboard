@@ -25,7 +25,7 @@ export const useUi = create<UiState>()(
   persist(
     (set) => ({
       theme: 'auto',
-      motion: 'full',
+      motion: 'calm',
       sound: true,
       ambience: { rain: 0, fire: 0, library: 0, purr: 0, keys: 0 },
       view: 'today',

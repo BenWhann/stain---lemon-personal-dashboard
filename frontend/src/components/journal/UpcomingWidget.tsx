@@ -9,13 +9,14 @@ interface UpcomingWidgetProps {
   events: CalendarEvent[];
   onOpenTask: (t: Task) => void;
   className?: string;
+  embedded?: boolean;
 }
 
 type FeedItem =
   | { type: 'task'; date: string; task: Task }
   | { type: 'event'; date: string; event: CalendarEvent };
 
-export const UpcomingWidget: React.FC<UpcomingWidgetProps> = ({ tasks, events, onOpenTask, className }) => {
+export const UpcomingWidget: React.FC<UpcomingWidgetProps> = ({ tasks, events, onOpenTask, className, embedded = false }) => {
   const today = todayISO();
   const nextWeekEnd = addDays(today, 7);
 
@@ -36,16 +37,16 @@ export const UpcomingWidget: React.FC<UpcomingWidgetProps> = ({ tasks, events, o
     return items.sort((a, b) => a.date.localeCompare(b.date));
   }, [tasks, events, today, nextWeekEnd]);
 
-  return (
-    <section className={cx('pane flex min-h-0 flex-col p-4 sm:p-5', className)} aria-labelledby="upcoming-heading">
+  const content = (
+    <>
       <div className="flex items-center justify-between">
-        <h2 id="upcoming-heading" className="heading text-xl">
+        <h2 id="upcoming-heading" className="heading text-base">
           Coming Up
         </h2>
         <span className="tabular text-xs text-ink-faint">Next 7 days</span>
       </div>
 
-      <ul className="scroll-soft -mx-1 mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-1" data-lenis-prevent>
+      <ul className="scroll-soft -mx-1 mt-2.5 min-h-0 flex-1 space-y-1 overflow-y-auto px-1" data-lenis-prevent>
         {upcomingItems.map((item) => {
           const due = dueLabel(item.date, today);
           const isTask = item.type === 'task';
@@ -55,10 +56,10 @@ export const UpcomingWidget: React.FC<UpcomingWidgetProps> = ({ tasks, events, o
               key={isTask ? `t-${item.task.id}` : `e-${item.event.id}`}
               onClick={() => isTask && onOpenTask(item.task)}
               className={cx(
-                'group flex items-center justify-between gap-2.5 rounded-xl px-2.5 py-1.5 text-xs transition-colors',
+                'group flex items-center justify-between gap-2.5 rounded-md px-2.5 py-1.5 text-xs transition-colors',
                 isTask
-                  ? 'cursor-pointer hover:bg-ink/[0.06] hover:ring-1 hover:ring-honey/30'
-                  : 'bg-ink/[0.03]',
+                  ? 'cursor-pointer hover:bg-ink/[0.04] border border-transparent hover:border-line/15'
+                  : 'bg-ink/[0.02]',
               )}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -76,14 +77,14 @@ export const UpcomingWidget: React.FC<UpcomingWidgetProps> = ({ tasks, events, o
                 {isTask ? (
                   <span
                     className={cx(
-                      'rounded-md px-1.5 py-0.5 font-medium',
-                      due.urgency === 'soon' ? 'bg-caramel/15 text-caramel' : 'bg-ink/[0.06] text-ink-soft',
+                      'rounded px-1.5 py-0.5 font-medium tabular',
+                      due.urgency === 'soon' ? 'text-caramel font-semibold' : 'text-ink-faint',
                     )}
                   >
                     {due.text}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 tabular">
                     <Clock className="h-3 w-3" />
                     <span>{due.text}</span>
                   </span>
@@ -94,9 +95,19 @@ export const UpcomingWidget: React.FC<UpcomingWidgetProps> = ({ tasks, events, o
         })}
 
         {upcomingItems.length === 0 && (
-          <li className="py-6 text-center text-xs text-ink-faint">Nothing scheduled for the coming week.</li>
+          <li className="py-4 text-center text-xs text-ink-faint">Nothing scheduled for the coming week.</li>
         )}
       </ul>
+    </>
+  );
+
+  if (embedded) {
+    return <div className={cx('flex min-h-0 flex-col', className)}>{content}</div>;
+  }
+
+  return (
+    <section className={cx('pane flex min-h-0 flex-col p-4 sm:p-5', className)} aria-labelledby="upcoming-heading">
+      {content}
     </section>
   );
 };

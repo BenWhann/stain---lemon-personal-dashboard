@@ -6,7 +6,7 @@ import { useAuth } from '../../store/auth';
 import { useTasks } from '../../store/tasks';
 import { MODE_LABEL, TimerMode, useTimer } from '../../store/timer';
 import { toast } from '../../store/toast';
-import { MotionMode, ThemeMode, useUi } from '../../store/ui';
+import { ThemeMode, useUi } from '../../store/ui';
 import type { User } from '../../types';
 import { Segmented } from '../ui/Segmented';
 
@@ -90,18 +90,10 @@ export const Settings: React.FC = () => {
             ]}
           />
         </Row>
-        <Row label="Animation" hint="Calm keeps the room still and skips the parades.">
-          <Segmented<MotionMode>
-            label="Animation"
-            size="sm"
-            value={ui.motion}
-            onChange={ui.setMotion}
-            options={[
-              { value: 'full', label: 'Full' },
-              { value: 'calm', label: 'Calm' },
-              { value: 'system', label: 'Match device' },
-            ]}
-          />
+        <Row label="Animation" hint="Calm mode is locked for instant, lightweight responsiveness.">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-line/20 bg-ink/[0.04] px-3 py-1.5 text-xs font-medium text-ink-soft">
+            Calm (Performance Optimized)
+          </span>
         </Row>
         <Row label="Sound effects" hint="Chimes, purrs and the focus bell.">
           <Segmented<'on' | 'off'>

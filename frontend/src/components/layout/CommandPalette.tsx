@@ -145,7 +145,7 @@ export const CommandPalette: React.FC<Props> = ({ onNewTask, onOpenTask, onToggl
                     onMouseMove={() => setActive(i)}
                     onClick={() => run(item)}
                     className={cx(
-                      'relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150',
+                      'relative flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors duration-150',
                       i === active ? 'bg-honey/15 text-ink' : 'text-ink-soft',
                     )}
                   >
