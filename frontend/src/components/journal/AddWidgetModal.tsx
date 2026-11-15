@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   CheckSquare,
   Clock,
@@ -113,6 +113,26 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
   const [analyticsVisual, setAnalyticsVisual] = useState<AnalyticsVisual>('bar-chart');
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<AnalyticsTimeframe>('14-days');
 
+  const computedAnalyticsTitle = useMemo(() => {
+    const prefix = categoryFilter !== 'All' ? `${categoryFilter} ` : '';
+    switch (analyticsMetric) {
+      case 'tasks-completed':
+        return `${prefix}Tasks Completed`;
+      case 'focus-time':
+        return `${prefix}Focus Hours`;
+      case 'habit-consistency':
+        return 'Habit Consistency';
+      case 'category-breakdown':
+        return 'Tasks by Category';
+      case 'completion-rate':
+        return `${prefix}Completion Rate`;
+      case 'velocity':
+        return `${prefix}Productivity Velocity`;
+      default:
+        return 'Custom Analytics';
+    }
+  }, [analyticsMetric, categoryFilter]);
+
   const activeOption = AVAILABLE_WIDGETS.find((w) => w.type === selected)!;
 
   const handleSelect = (type: WidgetType) => {
@@ -124,9 +144,12 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
+    const finalTitle =
+      customTitle.trim() ||
+      (selected === 'analytics' ? computedAnalyticsTitle : activeOption.title);
     addWidget({
       type: selected,
-      title: customTitle.trim() || activeOption.title,
+      title: finalTitle,
       width,
       settings: {
         category: categoryFilter,
@@ -185,10 +208,52 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
 
         {/* Custom Analytics Query Builder Section */}
         {selected === 'analytics' && (
-          <div className="rounded-md border border-honey/30 bg-honey/[0.04] p-3 space-y-3">
-            <p className="text-xs font-semibold text-honey-deep dark:text-honey flex items-center gap-1.5">
-              <BarChart3 className="h-3.5 w-3.5" /> Configure analytics query &amp; visualization
-            </p>
+          <div className="rounded-md border border-honey/30 bg-honey/[0.04] p-3.5 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-honey-deep dark:text-honey flex items-center gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5" /> Configure analytics query &amp; visualization
+              </p>
+              <span className="text-[10px] text-ink-faint">Custom Visual Widget</span>
+            </div>
+
+            {/* Prominent Widget Title for Custom Analytics */}
+            <div className="rounded-md border border-line/15 bg-surface/90 p-3 space-y-1.5 shadow-2xs">
+              <label className="label mb-1 flex items-center justify-between">
+                <span className="font-semibold text-xs text-ink">Widget title</span>
+                <span className="text-[10px] font-normal text-ink-faint">Give this chart visual a custom name</span>
+              </label>
+              <input
+                type="text"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                placeholder={computedAnalyticsTitle}
+                className="field bg-surface text-xs font-medium"
+              />
+              <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-ink-soft">
+                <span className="text-ink-faint">Suggestions:</span>
+                {[
+                  computedAnalyticsTitle,
+                  'Weekly Momentum',
+                  'Study Focus',
+                  'Sprint Velocity',
+                  'Daily Goals',
+                ].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setCustomTitle(s)}
+                    className={cx(
+                      'px-1.5 py-0.5 rounded border transition-colors',
+                      customTitle === s
+                        ? 'border-honey bg-honey/20 font-semibold text-ink'
+                        : 'border-line/20 bg-surface hover:bg-honey/10 hover:border-honey/40 text-ink-soft',
+                    )}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -255,16 +320,26 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-line/15">
-          <div>
-            <label className="label mb-1">Widget title</label>
-            <input
-              type="text"
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder={activeOption.title}
-              className="field"
-            />
-          </div>
+          {selected !== 'analytics' ? (
+            <div>
+              <label className="label mb-1">Widget title</label>
+              <input
+                type="text"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                placeholder={activeOption.title}
+                className="field"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="label mb-1">Chart layout</label>
+              <p className="text-xs text-ink-soft py-2">
+                Showing <span className="font-semibold text-ink">{analyticsMetric.replace('-', ' ')}</span> as{' '}
+                <span className="font-semibold text-ink">{analyticsVisual.replace('-', ' ')}</span>
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="label mb-1">Grid column width</label>
