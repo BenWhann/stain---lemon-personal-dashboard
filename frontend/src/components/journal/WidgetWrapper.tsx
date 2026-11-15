@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowLeft, ArrowRight, GripVertical, Settings2, Trash2 } from 'lucide-react';
@@ -38,6 +38,16 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
   const [editTimeframe, setEditTimeframe] = useState<AnalyticsTimeframe>(
     widget.settings?.analyticsTimeframe || '14-days'
   );
+
+  useEffect(() => {
+    if (settingsOpen) {
+      setEditTitle(widget.title || '');
+      setEditCategory(widget.settings?.category || 'All');
+      setEditMetric(widget.settings?.analyticsMetric || 'tasks-completed');
+      setEditVisual(widget.settings?.analyticsVisual || 'bar-chart');
+      setEditTimeframe(widget.settings?.analyticsTimeframe || '14-days');
+    }
+  }, [settingsOpen, widget]);
 
   const [isResizing, setIsResizing] = useState(false);
   const [previewWidth, setPreviewWidth] = useState<WidgetWidth | null>(null);

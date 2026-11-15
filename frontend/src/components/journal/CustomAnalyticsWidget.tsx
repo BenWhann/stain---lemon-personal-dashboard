@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart2,
@@ -7,6 +7,8 @@ import {
   Hash,
   ListOrdered,
   Sparkles,
+  Check,
+  Edit2,
 } from 'lucide-react';
 import {
   addDays,
@@ -180,9 +182,16 @@ export const CustomAnalyticsWidget: React.FC<CustomAnalyticsWidgetProps> = ({
     return { total, completed, rate, overdue };
   }, [filteredTasks, today]);
 
-  // Smart default display title
+  // Smart default display title: if custom title provided, prioritize it
   const displayTitle = useMemo(() => {
-    if (title && title !== 'Custom Analytics') return title;
+    if (
+      title &&
+      title.trim() &&
+      title !== 'Custom Analytics' &&
+      title !== 'Custom Analytics & Visuals'
+    ) {
+      return title.trim();
+    }
     const catPrefix = categoryFilter !== 'All' ? `${categoryFilter} ` : '';
     switch (metric) {
       case 'tasks-completed':
@@ -201,6 +210,21 @@ export const CustomAnalyticsWidget: React.FC<CustomAnalyticsWidgetProps> = ({
         return 'Custom Analytics';
     }
   }, [title, metric, categoryFilter]);
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(displayTitle);
+
+  useEffect(() => {
+    setTitleDraft(displayTitle);
+  }, [displayTitle]);
+
+  const handleSaveTitle = () => {
+    setIsEditingTitle(false);
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== title) {
+      updateWidget(id, { title: trimmed });
+    }
+  };
 
   // Render Visual Types
   const renderVisualContent = () => {
@@ -550,8 +574,56 @@ export const CustomAnalyticsWidget: React.FC<CustomAnalyticsWidgetProps> = ({
       {/* Widget Header with Interactive Quick-Toggles */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-1.5 border-b border-line/15 pb-2">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-          <Sparkles className="h-3.5 w-3.5 text-honey-deep dark:text-honey" />
-          <span>{displayTitle}</span>
+          <Sparkles className="h-3.5 w-3.5 text-honey-deep dark:text-honey shrink-0" />
+          {isEditingTitle ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveTitle();
+              }}
+              className="flex items-center gap-1"
+            >
+              <input
+                autoFocus
+                type="text"
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={handleSaveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setTitleDraft(displayTitle);
+                    setIsEditingTitle(false);
+                  }
+                }}
+                className="field !py-0.5 !px-1.5 text-xs font-semibold rounded h-6 w-36 sm:w-48"
+              />
+              <button
+                type="submit"
+                className="p-1 rounded text-honey hover:bg-honey/15"
+                title="Save title"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+            </form>
+          ) : (
+            <div className="group/title flex items-center gap-1">
+              <span
+                onDoubleClick={() => setIsEditingTitle(true)}
+                className="cursor-pointer hover:text-honey transition-colors"
+                title="Double-click to rename widget"
+              >
+                {displayTitle}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsEditingTitle(true)}
+                className="opacity-0 group-hover/title:opacity-100 p-0.5 rounded text-ink-faint hover:text-honey hover:bg-honey/15 transition-all"
+                title="Rename widget"
+              >
+                <Edit2 className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5">
