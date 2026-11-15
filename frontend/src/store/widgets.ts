@@ -37,6 +37,8 @@ interface WidgetsState {
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<WidgetConfig>) => void;
   moveWidget: (id: string, direction: 'up' | 'down') => void;
+  reorderWidgets: (startIndex: number, endIndex: number) => void;
+  setWidgetsOrder: (widgets: WidgetConfig[]) => void;
   setWidth: (id: string, width: WidgetWidth) => void;
   resetDefaults: () => void;
 }
@@ -120,6 +122,17 @@ export const useWidgets = create<WidgetsState>()(
           copy.splice(targetIndex, 0, removed);
           return { widgets: copy };
         }),
+      reorderWidgets: (startIndex, endIndex) =>
+        set((s) => {
+          if (startIndex < 0 || startIndex >= s.widgets.length) return s;
+          if (endIndex < 0 || endIndex >= s.widgets.length) return s;
+          if (startIndex === endIndex) return s;
+          const copy = [...s.widgets];
+          const [removed] = copy.splice(startIndex, 1);
+          copy.splice(endIndex, 0, removed);
+          return { widgets: copy };
+        }),
+      setWidgetsOrder: (widgets) => set({ widgets }),
       setWidth: (id, width) =>
         set((s) => ({
           widgets: s.widgets.map((w) => (w.id === id ? { ...w, width } : w)),
