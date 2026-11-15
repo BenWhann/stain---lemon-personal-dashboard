@@ -10,9 +10,27 @@ export type WidgetType =
   | 'sanctuary'
   | 'quick-note'
   | 'bookmarks'
-  | 'greeting';
+  | 'greeting'
+  | 'analytics';
 
 export type WidgetWidth = '1-col' | '2-col' | '3-col';
+
+export type AnalyticsMetric =
+  | 'tasks-completed'
+  | 'focus-time'
+  | 'habit-consistency'
+  | 'category-breakdown'
+  | 'completion-rate'
+  | 'velocity';
+
+export type AnalyticsVisual =
+  | 'bar-chart'
+  | 'area-trend'
+  | 'progress-ring'
+  | 'stat-trend'
+  | 'category-bars';
+
+export type AnalyticsTimeframe = '7-days' | '14-days' | '30-days';
 
 export interface WidgetConfig {
   id: string;
@@ -25,6 +43,11 @@ export interface WidgetConfig {
     priority?: string; // 'All' or 'Zoomies'
     noteContent?: string;
     noteTitle?: string;
+    // Analytics configuration:
+    analyticsMetric?: AnalyticsMetric;
+    analyticsVisual?: AnalyticsVisual;
+    analyticsTimeframe?: AnalyticsTimeframe;
+    targetGoal?: number;
   };
 }
 
@@ -88,6 +111,18 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
     settings: {
       noteTitle: 'Study Scratchpad',
       noteContent: '• Review chapter readings\n• Outline draft methodology\n• Check in with advisor on Friday',
+    },
+  },
+  {
+    id: 'w-analytics',
+    type: 'analytics',
+    title: 'Focus & Study Momentum',
+    width: '1-col',
+    settings: {
+      analyticsMetric: 'focus-time',
+      analyticsVisual: 'bar-chart',
+      analyticsTimeframe: '14-days',
+      category: 'All',
     },
   },
 ];

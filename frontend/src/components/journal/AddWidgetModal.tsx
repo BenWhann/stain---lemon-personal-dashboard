@@ -1,6 +1,24 @@
 import React, { useState } from 'react';
-import { CheckSquare, Clock, Heart, Calendar, FileText, Bookmark, Sparkles, Plus, AlertCircle } from 'lucide-react';
-import { useWidgets, WidgetType, WidgetWidth } from '../../store/widgets';
+import {
+  CheckSquare,
+  Clock,
+  Heart,
+  Calendar,
+  FileText,
+  Bookmark,
+  Sparkles,
+  Plus,
+  AlertCircle,
+  BarChart3,
+} from 'lucide-react';
+import {
+  AnalyticsMetric,
+  AnalyticsTimeframe,
+  AnalyticsVisual,
+  useWidgets,
+  WidgetType,
+  WidgetWidth,
+} from '../../store/widgets';
 import { Modal } from '../ui/Modal';
 import { cx } from '../ui/cx';
 
@@ -24,6 +42,13 @@ const AVAILABLE_WIDGETS: WidgetOption[] = [
     description: 'Track today’s tasks with quick-add, overdue highlights, and optional category filter.',
     defaultWidth: '2-col',
     Icon: CheckSquare,
+  },
+  {
+    type: 'analytics',
+    title: 'Custom Analytics & Visuals',
+    description: 'Query task completions, focus hours, habit consistency, or study distribution with customizable charts.',
+    defaultWidth: '2-col',
+    Icon: BarChart3,
   },
   {
     type: 'quick-note',
@@ -83,6 +108,11 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [width, setWidth] = useState<WidgetWidth>('2-col');
 
+  // Analytics query builder state
+  const [analyticsMetric, setAnalyticsMetric] = useState<AnalyticsMetric>('tasks-completed');
+  const [analyticsVisual, setAnalyticsVisual] = useState<AnalyticsVisual>('bar-chart');
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<AnalyticsTimeframe>('14-days');
+
   const activeOption = AVAILABLE_WIDGETS.find((w) => w.type === selected)!;
 
   const handleSelect = (type: WidgetType) => {
@@ -102,7 +132,11 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
         category: categoryFilter,
         taskFilter: 'today',
         noteTitle: customTitle.trim() || 'Study Scratchpad',
-        noteContent: selected === 'quick-note' ? '• New study note\n• Write reminders here' : undefined,
+        noteContent:
+          selected === 'quick-note' ? '• New study note\n• Write reminders here' : undefined,
+        analyticsMetric,
+        analyticsVisual,
+        analyticsTimeframe,
       },
     });
     onClose();
@@ -129,18 +163,96 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
                       : 'border-line/15 bg-ink/[0.02] hover:bg-ink/[0.05]',
                   )}
                 >
-                  <span className={cx('p-1.5 rounded-md shrink-0', isSel ? 'bg-honey text-night' : 'bg-ink/10 text-ink-soft')}>
+                  <span
+                    className={cx(
+                      'p-1.5 rounded-md shrink-0',
+                      isSel ? 'bg-honey text-night' : 'bg-ink/10 text-ink-soft',
+                    )}
+                  >
                     <Icon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-ink leading-tight">{opt.title}</p>
-                    <p className="text-[11px] text-ink-faint line-clamp-2 mt-0.5">{opt.description}</p>
+                    <p className="text-[11px] text-ink-faint line-clamp-2 mt-0.5">
+                      {opt.description}
+                    </p>
                   </div>
                 </button>
               );
             })}
           </div>
         </div>
+
+        {/* Custom Analytics Query Builder Section */}
+        {selected === 'analytics' && (
+          <div className="rounded-md border border-honey/30 bg-honey/[0.04] p-3 space-y-3">
+            <p className="text-xs font-semibold text-honey-deep dark:text-honey flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" /> Configure analytics query &amp; visualization
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label mb-1">Metric to measure</label>
+                <select
+                  value={analyticsMetric}
+                  onChange={(e) => setAnalyticsMetric(e.target.value as AnalyticsMetric)}
+                  className="field"
+                >
+                  <option value="tasks-completed">Tasks completed</option>
+                  <option value="focus-time">Focus sprint hours</option>
+                  <option value="habit-consistency">Habit consistency</option>
+                  <option value="category-breakdown">Category breakdown</option>
+                  <option value="completion-rate">On-time completion rate</option>
+                  <option value="velocity">Productivity velocity</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label mb-1">Visualization style</label>
+                <select
+                  value={analyticsVisual}
+                  onChange={(e) => setAnalyticsVisual(e.target.value as AnalyticsVisual)}
+                  className="field"
+                >
+                  <option value="bar-chart">Column bar chart</option>
+                  <option value="area-trend">Smooth area trend curve</option>
+                  <option value="progress-ring">Progress ring / goal gauge</option>
+                  <option value="stat-trend">KPI stat card with sparkline</option>
+                  <option value="category-bars">Category distribution bars</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label mb-1">Time window</label>
+                <select
+                  value={analyticsTimeframe}
+                  onChange={(e) => setAnalyticsTimeframe(e.target.value as AnalyticsTimeframe)}
+                  className="field"
+                >
+                  <option value="7-days">Last 7 days (1 week)</option>
+                  <option value="14-days">Last 14 days (2 weeks)</option>
+                  <option value="30-days">Last 30 days (1 month)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label mb-1">Filter by category</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="field"
+                >
+                  <option value="All">All categories</option>
+                  <option value="Grad School">Grad school only</option>
+                  <option value="Work">Work only</option>
+                  <option value="Bills">Bills only</option>
+                  <option value="Personal">Personal only</option>
+                  <option value="Wellness">Wellness only</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-line/15">
           <div>
@@ -176,11 +288,11 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({ open, onClose })
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="field"
             >
-              <option value="All">All Categories</option>
-              <option value="Grad School">Grad School Only</option>
-              <option value="Work">Work Only</option>
-              <option value="Bills">Bills Only</option>
-              <option value="Personal">Personal Only</option>
+              <option value="All">All categories</option>
+              <option value="Grad School">Grad school only</option>
+              <option value="Work">Work only</option>
+              <option value="Bills">Bills only</option>
+              <option value="Personal">Personal only</option>
             </select>
           </div>
         )}

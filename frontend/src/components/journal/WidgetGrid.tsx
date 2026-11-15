@@ -37,6 +37,7 @@ import { WeekStrip } from './WeekStrip';
 import { UpcomingWidget } from './UpcomingWidget';
 import { SanctuaryPane } from './SanctuaryPane';
 import { QuickNoteWidget } from './QuickNoteWidget';
+import { CustomAnalyticsWidget } from './CustomAnalyticsWidget';
 import { Launchpad } from './Launchpad';
 import { useTasks } from '../../store/tasks';
 import { useEvents } from '../../store/events';
@@ -144,6 +145,14 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({ onOpenTask, quickAddRef 
             id={widget.id}
             title={widget.title}
             initialContent={widget.settings?.noteContent}
+          />
+        );
+      case 'analytics':
+        return (
+          <CustomAnalyticsWidget
+            id={widget.id}
+            title={widget.title}
+            settings={widget.settings}
           />
         );
       case 'bookmarks':
