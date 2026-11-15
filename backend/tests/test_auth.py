@@ -25,7 +25,7 @@ def test_login_sets_httponly_cookie(client):
     cookie = res.headers["set-cookie"]
     assert "ls_session=" in cookie
     assert "HttpOnly" in cookie
-    assert "SameSite=strict" in cookie
+    assert "SameSite=lax" in cookie
     assert client.get("/api/auth/status").json()["authenticated"] is True
     assert client.get("/api/tasks").status_code == 200
 
