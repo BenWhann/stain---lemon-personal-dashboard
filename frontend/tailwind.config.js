@@ -27,15 +27,15 @@ export default {
         night: v('night'),
       },
       borderRadius: {
-        pane: '1.25rem',
-        card: '0.875rem',
-        field: '0.75rem',
+        pane: '0.5rem',
+        card: '0.375rem',
+        field: '0.375rem',
       },
       boxShadow: {
-        pane: '0 20px 50px -15px rgb(var(--shadow) / 0.45), 0 1px 0 0 rgb(255 255 255 / 0.14) inset',
-        card: '0 2px 8px -2px rgb(var(--shadow) / 0.12), 0 1px 2px 0 rgb(var(--shadow) / 0.08)',
-        glow: '0 0 0 1px rgb(var(--honey) / 0.35), 0 0 24px -4px rgb(var(--honey) / 0.45)',
-        lift: '0 10px 25px -8px rgb(var(--shadow) / 0.4), 0 1px 0 0 rgb(255 255 255 / 0.15) inset',
+        pane: '0 4px 20px -4px rgb(var(--shadow) / 0.18), 0 1px 2px 0 rgb(var(--shadow) / 0.08)',
+        card: '0 1px 3px 0 rgb(var(--shadow) / 0.1), 0 1px 2px -1px rgb(var(--shadow) / 0.06)',
+        glow: '0 0 0 1px rgb(var(--honey) / 0.35)',
+        lift: '0 6px 16px -4px rgb(var(--shadow) / 0.22)',
       },
       transitionTimingFunction: {
         silk: 'cubic-bezier(0.22, 1, 0.36, 1)',

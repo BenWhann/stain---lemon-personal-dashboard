@@ -28,20 +28,20 @@ export const Launchpad: React.FC = () => {
                 href={b.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="pane flex h-full flex-col p-4 transition-transform duration-300 ease-silk hover:-translate-y-1"
+                className="flex h-full flex-col rounded-md border border-line/15 bg-ink/[0.02] p-3 transition-colors hover:border-honey/50 hover:bg-honey/[0.04]"
               >
-                <span className="text-2xl transition-transform duration-500 ease-spring group-hover:-rotate-12 group-hover:scale-110">{b.icon || '🔗'}</span>
-                <span className="mt-3 flex items-start justify-between gap-2 text-sm font-medium text-ink">
-                  <span className="line-clamp-2">{b.title}</span>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-ink-faint transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-honey" />
+                <span className="text-xl">{b.icon || '🔗'}</span>
+                <span className="mt-2 flex items-start justify-between gap-1 text-xs font-medium text-ink">
+                  <span className="line-clamp-1">{b.title}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-ink-faint group-hover:text-honey" />
                 </span>
-                <span className="mt-0.5 text-xs text-ink-faint">{b.category}</span>
+                <span className="mt-0.5 text-[11px] text-ink-faint truncate">{b.category}</span>
               </a>
               <button
                 type="button"
                 aria-label={`Remove ${b.title}`}
                 onClick={() => void remove(b.id)}
-                className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-night/60 text-ink-faint opacity-0 transition-opacity hover:text-ember group-hover:opacity-100 focus-visible:opacity-100"
+                className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded bg-ink/10 text-ink-faint opacity-0 transition-opacity hover:text-ember group-hover:opacity-100 focus-visible:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -52,10 +52,10 @@ export const Launchpad: React.FC = () => {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="grid h-full min-h-[7.5rem] w-full place-items-center rounded-pane border border-dashed border-ink/20 text-sm text-ink-soft transition-colors hover:border-honey hover:text-honey"
+            className="grid h-full min-h-[5.5rem] w-full place-items-center rounded-md border border-dashed border-line/25 text-xs text-ink-soft transition-colors hover:border-honey hover:text-honey"
           >
             <span className="flex flex-col items-center gap-1">
-              <Plus className="h-5 w-5" /> Add a link
+              <Plus className="h-4 w-4" /> Add a link
             </span>
           </button>
         </li>

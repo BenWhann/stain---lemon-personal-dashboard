@@ -54,23 +54,21 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
   const pill = usePill<View>(view);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 px-2 pt-3 sm:px-8">
-      <div className="pane mx-auto flex h-14 max-w-[1480px] items-center justify-between gap-1.5 !rounded-full px-2 sm:gap-3 sm:px-4">
+    <header className="fixed inset-x-0 top-0 z-40 px-3 pt-3 sm:px-8">
+      <div className="pane mx-auto flex h-13 max-w-[1520px] items-center justify-between gap-2 px-3 py-1.5 sm:gap-4 sm:px-4">
         <button type="button" className="flex items-center gap-2.5" onClick={() => setView('today')} aria-label="Lemon & Stain, home">
-          <motion.span whileHover={{ rotate: -14, scale: 1.08 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}>
-            <BrandMark className="h-8 w-8" />
-          </motion.span>
-          <span className="heading hidden text-xl text-honey sm:block">Lemon &amp; Stain</span>
+          <BrandMark className="h-7 w-7" />
+          <span className="heading hidden text-lg font-medium text-ink sm:block">Lemon &amp; Stain</span>
         </button>
 
-        <nav aria-label="Main" className="relative flex items-center gap-0.5 rounded-full bg-ink/[0.06] p-1 border border-ink/[0.04]">
+        <nav aria-label="Main" className="relative flex items-center gap-0.5 rounded-md bg-ink/[0.04] p-0.5 border border-line/15">
           {pill.rect && (
             <motion.span
               aria-hidden
-              className="absolute bottom-1 left-0 top-1 rounded-full bg-surface shadow-card border border-ink/[0.08] dark:bg-surface-strong dark:border-line/20"
+              className="absolute bottom-0.5 left-0 top-0.5 rounded-md bg-surface shadow-card border border-line/20 dark:bg-surface-strong"
               initial={false}
               animate={{ x: pill.rect.x, width: pill.rect.w }}
-              transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 38 }}
             />
           )}
           {NAV.map((n) => {
@@ -83,7 +81,7 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
                 onClick={() => setView(n.id)}
                 aria-current={active ? 'page' : undefined}
                 className={cx(
-                  'relative rounded-full px-2.5 py-1.5 text-[13px] font-medium transition-all sm:px-5 sm:text-sm',
+                  'relative rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:px-3.5',
                   active ? 'text-ink font-semibold' : 'text-ink-soft hover:text-ink'
                 )}
               >
@@ -93,25 +91,25 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
           })}
         </nav>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="btn-ghost hidden h-9 !px-3 text-xs md:inline-flex"
+            className="btn-ghost hidden h-8 !px-2.5 text-xs md:inline-flex"
             aria-label="Open quick actions"
           >
             <Search className="h-3.5 w-3.5" />
-            <span>Quick actions</span>
-            <kbd className="ml-1 inline-flex items-center gap-0.5 rounded bg-ink/10 px-1 text-[10px]">
+            <span>Search</span>
+            <kbd className="ml-1 inline-flex items-center gap-0.5 rounded bg-ink/[0.08] px-1 text-[10px] text-ink-faint">
               {isMac ? <Command className="h-2.5 w-2.5" /> : 'Ctrl'}K
             </kbd>
           </button>
-          <button type="button" className="btn-ghost hidden h-9 w-9 !p-0 sm:inline-flex" onClick={() => setSound(!sound)} aria-label={sound ? 'Mute sounds' : 'Turn sounds on'} title={sound ? 'Mute' : 'Sound on'}>
-            {sound ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          <button type="button" className="btn-ghost hidden h-8 w-8 !p-0 sm:inline-flex" onClick={() => setSound(!sound)} aria-label={sound ? 'Mute sounds' : 'Turn sounds on'} title={sound ? 'Mute' : 'Sound on'}>
+            {sound ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
           </button>
           <button
             type="button"
-            className="btn-ghost relative h-9 w-9 overflow-hidden !p-0"
+            className="btn-ghost relative h-8 w-8 overflow-hidden !p-0"
             onClick={onToggleTheme}
             aria-label={night ? 'Switch to Lemon Sunlight' : 'Switch to Stain Nocturne'}
             title={night ? 'Lemon Sunlight' : 'Stain Nocturne'}
@@ -119,12 +117,12 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={night ? 'moon' : 'sun'}
-                initial={{ y: 18, rotate: -90, opacity: 0 }}
-                animate={{ y: 0, rotate: 0, opacity: 1 }}
-                exit={{ y: -18, rotate: 90, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 24 }}
+                initial={{ y: 12, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -12, opacity: 0 }}
+                transition={{ duration: 0.15 }}
               >
-                {night ? <Moon className="h-4 w-4 text-honey" /> : <Sun className="h-4 w-4 text-honey-deep" />}
+                {night ? <Moon className="h-3.5 w-3.5 text-honey" /> : <Sun className="h-3.5 w-3.5 text-honey-deep" />}
               </motion.span>
             </AnimatePresence>
           </button>
@@ -135,7 +133,7 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
               aria-haspopup="menu"
               aria-expanded={menu}
               aria-label="Account"
-              className="grid h-9 w-9 place-items-center rounded-full font-display text-sm font-semibold text-night sm:ml-1"
+              className="grid h-8 w-8 place-items-center rounded-md font-display text-xs font-semibold text-night border border-honey-deep/40 sm:ml-1"
               style={{ background: 'linear-gradient(160deg, rgb(var(--honey)), rgb(var(--caramel)))' }}
             >
               {initial}
@@ -144,22 +142,23 @@ export const TopBar: React.FC<{ night: boolean; onToggleTheme: () => void }> = (
               {menu && (
                 <motion.div
                   role="menu"
-                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                  className="pane-solid absolute right-0 top-12 w-56 origin-top-right !rounded-2xl p-2"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.12 }}
+                  className="pane-solid absolute right-0 top-10 w-52 origin-top-right rounded-md p-1.5 shadow-lift"
                 >
-                  <p className="px-3 py-2 text-sm text-ink">
-                    {user?.display_name}
-                    <span className="block text-xs text-ink-faint">Signed in as {user?.username}</span>
-                  </p>
+                  <div className="border-b border-line/15 px-2.5 py-1.5">
+                    <p className="text-xs font-medium text-ink">{user?.display_name}</p>
+                    <p className="text-[11px] text-ink-faint">Signed in as {user?.username}</p>
+                  </div>
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-ink-soft hover:bg-ink/10 hover:text-ink"
+                    className="mt-1 flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs text-ink-soft hover:bg-ink/[0.06] hover:text-ink"
                     onClick={() => void logout()}
                   >
-                    <LogOut className="h-4 w-4" /> Sign out
+                    <LogOut className="h-3.5 w-3.5" /> Sign out
                   </button>
                 </motion.div>
               )}

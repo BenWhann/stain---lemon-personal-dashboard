@@ -10,7 +10,7 @@ import { COATS } from '../../art/coats';
 import { useXp } from './useXp';
 import { cx } from '../ui/cx';
 
-export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) => {
+export const SanctuaryPane: React.FC<{ className?: string; embedded?: boolean }> = ({ className, embedded = false }) => {
   const { level, title, progress, toNext, xp } = useXp();
   const { lemonPets, stainPets, focusPaws, pet } = usePets();
   const { ambience, setAmbience, sound, setSound } = useUi();
@@ -24,17 +24,17 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
 
   const activeChannels = AMBIENCE_CHANNELS.filter((ch) => ambience[ch.id] > 0);
 
-  return (
-    <section className={cx('pane flex flex-col gap-4 p-4 sm:p-5', className)} aria-label="Level, cats and ambience">
+  const content = (
+    <>
       <div>
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="heading text-lg">
+          <h2 className="heading text-base">
             Level {level}: {title}
           </h2>
           <span className="tabular text-xs text-ink-faint">{xp} xp</span>
         </div>
         <div
-          className="relative mt-2 h-2 overflow-hidden rounded-full bg-ink/10"
+          className="relative mt-2 h-1.5 overflow-hidden rounded bg-ink/10"
           role="progressbar"
           aria-valuenow={Math.round(progress * 100)}
           aria-valuemin={0}
@@ -42,7 +42,7 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
           aria-label="Progress to next level"
         >
           <motion.div
-            className="h-full rounded-full"
+            className="h-full rounded"
             style={{ background: 'linear-gradient(90deg, rgb(var(--caramel)), rgb(var(--honey)) 70%, rgb(255 236 190))' }}
             initial={{ width: 0 }}
             animate={{ width: `${Math.max(3, progress * 100)}%` }}
@@ -57,12 +57,12 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
           <motion.button
             key={cat}
             type="button"
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.96 }}
             onClick={(e) => petCat(cat, e)}
-            className="group flex items-center gap-2 rounded-xl bg-ink/[0.04] p-2 text-left transition-colors hover:bg-ink/[0.08]"
+            className="group flex items-center gap-2 rounded-md border border-line/15 bg-ink/[0.03] p-2 text-left transition-colors hover:bg-ink/[0.06]"
           >
-            <svg viewBox="-56 -70 112 118" className="h-9 w-9 shrink-0 transition-transform duration-500 ease-spring group-hover:rotate-[-8deg]">
+            <svg viewBox="-56 -70 112 118" className="h-8 w-8 shrink-0 transition-transform duration-300 group-hover:rotate-[-6deg]">
               <CatHead coat={COATS[cat]} eyes="happy" />
             </svg>
             <span className="min-w-0">
@@ -73,7 +73,7 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
         ))}
       </div>
 
-      <div className="border-t border-ink/10 pt-3">
+      <div className="border-t border-line/15 pt-2.5">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -83,7 +83,7 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
             <Sliders className="h-3.5 w-3.5" />
             <span>Ambience</span>
             {activeChannels.length > 0 && (
-              <span className="rounded-full bg-honey/20 px-1.5 text-[10px] font-semibold text-honey-deep dark:text-honey">
+              <span className="rounded bg-honey/20 px-1 text-[10px] font-semibold text-honey-deep dark:text-honey">
                 {activeChannels.length}
               </span>
             )}
@@ -107,19 +107,18 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden pt-3"
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden pt-2.5"
             >
               <div className="grid grid-cols-5 gap-1">
                 {AMBIENCE_CHANNELS.map((ch) => (
                   <label key={ch.id} className="flex flex-col items-center gap-1.5">
-                    <span className="relative block h-20 w-6">
-                      <span className="absolute inset-y-0 left-1/2 w-1.5 -translate-x-1/2 rounded-full bg-ink/10" />
+                    <span className="relative block h-16 w-5">
+                      <span className="absolute inset-y-0 left-1/2 w-1.5 -translate-x-1/2 rounded bg-ink/10" />
                       <motion.span
-                        className="absolute bottom-0 left-1/2 w-1.5 -translate-x-1/2 rounded-full"
+                        className="absolute bottom-0 left-1/2 w-1.5 -translate-x-1/2 rounded"
                         style={{
                           background: 'linear-gradient(0deg, rgb(var(--caramel)), rgb(var(--honey)))',
-                          boxShadow: ambience[ch.id] > 0 ? '0 0 10px rgb(var(--honey) / 0.6)' : 'none',
                         }}
                         animate={{ height: `${ambience[ch.id] * 100}%` }}
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
@@ -145,6 +144,16 @@ export const SanctuaryPane: React.FC<{ className?: string }> = ({ className }) =
           )}
         </AnimatePresence>
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className={cx('flex flex-col gap-3', className)}>{content}</div>;
+  }
+
+  return (
+    <section className={cx('pane flex flex-col gap-4 p-4 sm:p-5', className)} aria-label="Level, cats and ambience">
+      {content}
     </section>
   );
 };

@@ -14,7 +14,7 @@ import { cx } from '../ui/cx';
 
 const ICONS = ['🐾', '🏃‍♀️', '🥗', '📖', '💧', '🧘‍♀️', '☕', '💤', '✍️', '🎧', '🌿', '💊'];
 
-export const HabitsPane: React.FC<{ className?: string }> = ({ className }) => {
+export const HabitsPane: React.FC<{ className?: string; embedded?: boolean }> = ({ className, embedded = false }) => {
   const { habits, setDay, add, remove } = useHabits();
   const [adding, setAdding] = useState(false);
   const today = todayISO();
@@ -34,13 +34,13 @@ export const HabitsPane: React.FC<{ className?: string }> = ({ className }) => {
     }
   };
 
-  return (
-    <section className={cx('pane flex min-h-0 flex-col p-5', className)} aria-labelledby="habits-heading">
+  const content = (
+    <>
       <div className="flex items-center justify-between">
         <h2 id="habits-heading" className="heading text-xl">
           Habits
         </h2>
-        <button type="button" className="btn-ghost h-8 !px-3 text-xs" onClick={() => setAdding(true)}>
+        <button type="button" className="btn-ghost h-7 !px-2.5 text-xs" onClick={() => setAdding(true)}>
           <Plus className="h-3.5 w-3.5" /> New
         </button>
       </div>
@@ -112,6 +112,16 @@ export const HabitsPane: React.FC<{ className?: string }> = ({ className }) => {
         </AnimatePresence>
       </ul>
       <NewHabit open={adding} onClose={() => setAdding(false)} onSave={(n, i) => void add(n, i)} />
+    </>
+  );
+
+  if (embedded) {
+    return <div className={cx('flex min-h-0 flex-1 flex-col', className)}>{content}</div>;
+  }
+
+  return (
+    <section className={cx('pane flex min-h-0 flex-col p-4 sm:p-5', className)} aria-labelledby="habits-heading">
+      {content}
     </section>
   );
 };

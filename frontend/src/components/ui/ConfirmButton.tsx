@@ -19,7 +19,7 @@ export const ConfirmButton: React.FC<{
     <button
       type="button"
       aria-label={armed ? `Confirm: ${label}` : label}
-      className={cx(armed && '!opacity-100 rounded-full bg-ember/15 px-1.5 font-semibold text-ember', className)}
+      className={cx(armed && '!opacity-100 rounded bg-ember/15 px-1.5 font-semibold text-ember', className)}
       onClick={(e) => {
         e.stopPropagation();
         if (armed) {

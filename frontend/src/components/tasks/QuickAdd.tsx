@@ -51,8 +51,8 @@ export const QuickAdd = forwardRef<HTMLInputElement, QuickAddProps>(({ defaults,
 
   return (
     <div className={className}>
-      <label className="group flex items-center gap-2.5 rounded-xl bg-ink/[0.04] px-3.5 py-2.5 border border-ink/[0.08] shadow-sm transition-all duration-200 focus-within:bg-ink/[0.06] focus-within:border-honey/60 focus-within:ring-2 focus-within:ring-honey/20">
-        <Plus className="h-4 w-4 text-ink-faint transition-transform duration-300 group-focus-within:rotate-90 group-focus-within:text-honey" />
+      <label className="group flex items-center gap-2.5 rounded-md bg-ink/[0.03] px-3 py-2 border border-line/20 shadow-sm transition-colors duration-150 focus-within:bg-ink/[0.05] focus-within:border-honey/80 focus-within:ring-1 focus-within:ring-honey/30">
+        <Plus className="h-4 w-4 text-ink-faint transition-transform duration-200 group-focus-within:rotate-90 group-focus-within:text-honey" />
         <span className="sr-only">New task</span>
         <input
           ref={ref}
@@ -66,18 +66,18 @@ export const QuickAdd = forwardRef<HTMLInputElement, QuickAddProps>(({ defaults,
             if (e.key === 'Escape') (e.target as HTMLInputElement).blur();
           }}
           placeholder={HINTS[hint]}
-          className="w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-faint/80"
+          className="w-full bg-transparent text-xs font-normal text-ink outline-none placeholder:text-ink-faint/80"
           maxLength={255}
         />
         <AnimatePresence>
           {parsed.title && (
             <motion.kbd
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="hidden items-center gap-1 rounded-md bg-ink/10 px-1.5 py-0.5 text-[10px] text-ink-soft sm:flex"
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="hidden items-center gap-1 rounded bg-ink/[0.08] px-1.5 py-0.5 text-[10px] text-ink-soft sm:flex"
             >
-              <CornerDownLeft className="h-3 w-3" /> add
+              <CornerDownLeft className="h-3 w-3" /> enter
             </motion.kbd>
           )}
         </AnimatePresence>

@@ -22,9 +22,10 @@ interface WeekStripProps {
   tasks: Task[];
   onOpenCalendar?: () => void;
   onOpenTask?: (t: Task) => void;
+  embedded?: boolean;
 }
 
-export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalendar, onOpenTask }) => {
+export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalendar, onOpenTask, embedded = false }) => {
   const today = todayISO();
   const [selected, setSelected] = useState<string>(today);
 
@@ -63,12 +64,12 @@ export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalen
       : selectedDateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
     : selected;
 
-  return (
-    <div className="pane flex flex-col p-4 sm:p-5">
-      <div className="mb-3 flex items-center justify-between">
+  const content = (
+    <>
+      <div className="mb-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-honey" />
-          <h2 className="heading text-lg">This Week</h2>
+          <h2 className="heading text-base">This Week</h2>
         </div>
         {onOpenCalendar && (
           <button
@@ -101,14 +102,14 @@ export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalen
               aria-pressed={isSel}
               aria-label={`${formatLong(iso)}: ${dayEvs.length} events, ${dayTs.length} tasks due`}
               className={cx(
-                'group flex aspect-[0.9] flex-col items-center justify-between rounded-xl p-1.5 transition-all sm:aspect-square',
-                isSel ? 'bg-honey/20 ring-1 ring-honey' : 'hover:bg-ink/[0.06]',
+                'group flex aspect-[0.9] flex-col items-center justify-between rounded-md p-1.5 transition-colors sm:aspect-square',
+                isSel ? 'bg-honey/20 border border-honey/50' : 'hover:bg-ink/[0.04]',
               )}
             >
               <span className="text-[10px] font-medium text-ink-faint uppercase">{weekdayLetter}</span>
               <span
                 className={cx(
-                  'tabular grid h-6 w-6 place-items-center rounded-full text-xs font-medium',
+                  'tabular grid h-5 w-5 place-items-center rounded text-xs font-medium',
                   isToday ? 'bg-honey font-semibold text-night shadow-sm' : 'text-ink',
                 )}
               >
@@ -126,7 +127,7 @@ export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalen
       </div>
 
       {/* Selected day agenda preview */}
-      <div className="mt-3 border-t border-ink/10 pt-3">
+      <div className="mt-3 border-t border-line/15 pt-2.5">
         <div className="mb-2 flex items-baseline justify-between text-xs">
           <span className="font-semibold text-ink">{dayName}</span>
           <span className="text-ink-faint">
@@ -135,7 +136,7 @@ export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalen
           </span>
         </div>
 
-        <ul className="scroll-soft max-h-32 space-y-1.5 overflow-y-auto pr-1" data-lenis-prevent>
+        <ul className="scroll-soft max-h-32 space-y-1 overflow-y-auto pr-1" data-lenis-prevent>
           <AnimatePresence initial={false}>
             {selectedEvents.map((e) => (
               <motion.li
@@ -143,7 +144,7 @@ export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalen
                 layout
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 rounded-lg bg-ink/[0.04] px-2.5 py-1.5 text-xs"
+                className="flex items-center gap-2 rounded-md bg-ink/[0.03] border border-line/10 px-2.5 py-1 text-xs"
               >
                 <span className="h-2 w-2 shrink-0 rounded-full" style={dot(e.category)} />
                 <span className="truncate font-medium text-ink flex-1">{e.title}</span>
@@ -165,7 +166,7 @@ export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalen
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => onOpenTask?.(t)}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-ink/15 px-2.5 py-1.5 text-xs hover:border-honey/50 hover:bg-honey/[0.04]"
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-line/15 px-2.5 py-1 text-xs hover:border-honey/50 hover:bg-honey/[0.04]"
               >
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-honey" />
                 <span className="truncate text-ink-soft flex-1">Due: {t.title}</span>
@@ -175,10 +176,20 @@ export const WeekStrip: React.FC<WeekStripProps> = ({ events, tasks, onOpenCalen
           </AnimatePresence>
 
           {selectedEvents.length === 0 && selectedTasks.length === 0 && (
-            <li className="py-3 text-center text-xs text-ink-faint">No events or deadlines for this day.</li>
+            <li className="py-2 text-center text-xs text-ink-faint">No events or deadlines for this day.</li>
           )}
         </ul>
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="flex flex-col">{content}</div>;
+  }
+
+  return (
+    <div className="pane flex flex-col p-4 sm:p-5">
+      {content}
     </div>
   );
 };
