@@ -3,7 +3,14 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowLeft, ArrowRight, GripVertical, Settings2, Trash2 } from 'lucide-react';
 import { sfx } from '../../lib/audio';
-import { useWidgets, WidgetConfig, WidgetWidth } from '../../store/widgets';
+import {
+  AnalyticsMetric,
+  AnalyticsTimeframe,
+  AnalyticsVisual,
+  useWidgets,
+  WidgetConfig,
+  WidgetWidth,
+} from '../../store/widgets';
 import { cx } from '../ui/cx';
 import { Modal } from '../ui/Modal';
 
@@ -22,6 +29,15 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(widget.title || '');
   const [editCategory, setEditCategory] = useState(widget.settings?.category || 'All');
+  const [editMetric, setEditMetric] = useState<AnalyticsMetric>(
+    widget.settings?.analyticsMetric || 'tasks-completed'
+  );
+  const [editVisual, setEditVisual] = useState<AnalyticsVisual>(
+    widget.settings?.analyticsVisual || 'bar-chart'
+  );
+  const [editTimeframe, setEditTimeframe] = useState<AnalyticsTimeframe>(
+    widget.settings?.analyticsTimeframe || '14-days'
+  );
 
   const [isResizing, setIsResizing] = useState(false);
   const [previewWidth, setPreviewWidth] = useState<WidgetWidth | null>(null);
@@ -121,6 +137,9 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
       settings: {
         ...widget.settings,
         category: editCategory,
+        analyticsMetric: editMetric,
+        analyticsVisual: editVisual,
+        analyticsTimeframe: editTimeframe,
       },
     });
     setSettingsOpen(false);
@@ -283,6 +302,70 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widget, children }
                 <option value="Bills">Bills</option>
                 <option value="Personal">Personal</option>
               </select>
+            </div>
+          )}
+
+          {widget.type === 'analytics' && (
+            <div className="space-y-3">
+              <div>
+                <label className="label">Metric to measure</label>
+                <select
+                  value={editMetric}
+                  onChange={(e) => setEditMetric(e.target.value as AnalyticsMetric)}
+                  className="field"
+                >
+                  <option value="tasks-completed">Tasks completed</option>
+                  <option value="focus-time">Focus sprint hours</option>
+                  <option value="habit-consistency">Habit consistency</option>
+                  <option value="category-breakdown">Category breakdown</option>
+                  <option value="completion-rate">On-time completion rate</option>
+                  <option value="velocity">Productivity velocity</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Visualization style</label>
+                <select
+                  value={editVisual}
+                  onChange={(e) => setEditVisual(e.target.value as AnalyticsVisual)}
+                  className="field"
+                >
+                  <option value="bar-chart">Column bar chart</option>
+                  <option value="area-trend">Smooth area trend curve</option>
+                  <option value="progress-ring">Progress ring / goal gauge</option>
+                  <option value="stat-trend">KPI stat card with sparkline</option>
+                  <option value="category-bars">Category distribution bars</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Time window</label>
+                <select
+                  value={editTimeframe}
+                  onChange={(e) => setEditTimeframe(e.target.value as AnalyticsTimeframe)}
+                  className="field"
+                >
+                  <option value="7-days">Last 7 days (1 week)</option>
+                  <option value="14-days">Last 14 days (2 weeks)</option>
+                  <option value="30-days">Last 30 days (1 month)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Category filter</label>
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="field"
+                >
+                  <option value="All">All categories</option>
+                  <option value="Grad School">Grad school only</option>
+                  <option value="Work">Work only</option>
+                  <option value="Bills">Bills only</option>
+                  <option value="Personal">Personal only</option>
+                  <option value="Wellness">Wellness only</option>
+                </select>
+              </div>
             </div>
           )}
 
