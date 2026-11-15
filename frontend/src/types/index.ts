@@ -98,6 +98,7 @@ export interface Assignment {
 export interface User {
   username: string;
   display_name: string;
+  token?: string;
 }
 
 export type View = 'today' | 'calendar' | 'board' | 'insights' | 'settings';

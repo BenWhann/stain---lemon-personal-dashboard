@@ -97,6 +97,19 @@ def revoke_other_sessions(db: Session, user: User, keep_token: Optional[str]) ->
     db.commit()
 
 
+def extract_session_token(request: Request) -> Optional[str]:
+    """Extract session token from cookie, with Authorization: Bearer fallback for webview/cross-site contexts."""
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        return token
+    auth = request.headers.get("authorization") or request.headers.get("Authorization")
+    if auth:
+        parts = auth.split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            return parts[1].strip()
+    return None
+
+
 def set_session_cookie(response, token: str) -> None:
     response.set_cookie(
         SESSION_COOKIE,
@@ -104,13 +117,13 @@ def set_session_cookie(response, token: str) -> None:
         max_age=settings.SESSION_DAYS * 86400,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="strict",
+        samesite="lax",
         path="/",
     )
 
 
 def clear_session_cookie(response) -> None:
-    response.delete_cookie(SESSION_COOKIE, path="/", samesite="strict",
+    response.delete_cookie(SESSION_COOKIE, path="/", samesite="lax",
                            secure=settings.cookie_secure, httponly=True)
 
 
@@ -120,7 +133,7 @@ def require_user(request: Request, db: Session = Depends(get_db)) -> User:
         if request.headers.get(CSRF_HEADER) != CSRF_VALUE:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Missing request header")
 
-    token = request.cookies.get(SESSION_COOKIE)
+    token = extract_session_token(request)
     if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
 

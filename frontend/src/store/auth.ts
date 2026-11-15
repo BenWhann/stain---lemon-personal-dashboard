@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, setUnauthorizedHandler } from '../lib/api';
+import { api, setStoredToken, setUnauthorizedHandler } from '../lib/api';
 import type { User } from '../types';
 
 type Status = 'checking' | 'signed-out' | 'signed-in';
@@ -21,23 +21,36 @@ export const useAuth = create<AuthState>((set) => ({
   check: async () => {
     try {
       const res = await api.get<{ authenticated: boolean; account_exists: boolean; user: User | null }>('/auth/status');
-      set({
-        status: res.authenticated ? 'signed-in' : 'signed-out',
-        user: res.user,
-        accountExists: res.account_exists,
-      });
+      if (res.authenticated && res.user) {
+        if (res.user.token) setStoredToken(res.user.token);
+        set({
+          status: 'signed-in',
+          user: res.user,
+          accountExists: res.account_exists,
+        });
+      } else {
+        setStoredToken(null);
+        set({
+          status: 'signed-out',
+          user: null,
+          accountExists: res.account_exists,
+        });
+      }
     } catch {
+      setStoredToken(null);
       set({ status: 'signed-out', user: null });
     }
   },
   login: async (username, password) => {
     const user = await api.post<User>('/auth/login', { username, password });
+    if (user.token) setStoredToken(user.token);
     set({ status: 'signed-in', user, accountExists: true });
   },
   logout: async () => {
     try {
       await api.post('/auth/logout');
     } finally {
+      setStoredToken(null);
       set({ status: 'signed-out', user: null });
     }
   },
@@ -45,6 +58,7 @@ export const useAuth = create<AuthState>((set) => ({
 }));
 
 setUnauthorizedHandler(() => {
+  setStoredToken(null);
   if (useAuth.getState().status === 'signed-in') {
     useAuth.setState({ status: 'signed-out', user: null });
   }

@@ -279,6 +279,7 @@ class ProfileUpdate(BaseModel):
 class UserResponse(BaseModel):
     username: str
     display_name: str
+    token: Optional[str] = None
 
 
 class AuthStatusResponse(BaseModel):

@@ -1,8 +1,26 @@
 // Typed REST client. Every request carries the CSRF header the API requires, and
-// a 401 anywhere flips the app back to the sign-in screen.
+// supports dual session cookies + Bearer token fallback for webviews and partitioned contexts.
 
 const API_BASE = '/api';
 const CSRF = { 'X-Requested-With': 'lemon-stain' };
+const TOKEN_KEY = 'ls_token';
+
+export function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token: string | null): void {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage blocked */
+  }
+}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -19,13 +37,19 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   const headers = new Headers(options.headers);
   Object.entries(CSRF).forEach(([k, v]) => headers.set(k, v));
+
+  const token = getStoredToken();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
   let res: Response;
   try {
-    res = await fetch(url, { ...options, headers, credentials: 'same-origin' });
+    res = await fetch(url, { ...options, headers, credentials: 'include' });
   } catch {
     throw new ApiError(0, "Can't reach the dashboard server. Check your connection.");
   }

@@ -8,15 +8,20 @@ from models.schemas import (
 )
 from security import (
     CSRF_HEADER, CSRF_VALUE, SESSION_COOKIE, _token_id, account_exists, authenticate,
-    clear_session_cookie, client_ip, create_session, delete_session, hash_password,
-    login_throttle, require_user, revoke_other_sessions, set_session_cookie, verify_password,
+    clear_session_cookie, client_ip, create_session, delete_session, extract_session_token,
+    hash_password, login_throttle, require_user, revoke_other_sessions, set_session_cookie,
+    verify_password,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 
-def _user_out(user: User) -> UserResponse:
-    return UserResponse(username=user.username, display_name=user.display_name or user.username)
+def _user_out(user: User, token: str = "") -> UserResponse:
+    return UserResponse(
+        username=user.username,
+        display_name=user.display_name or user.username,
+        token=token or None,
+    )
 
 
 def _require_csrf(request: Request) -> None:
@@ -27,13 +32,13 @@ def _require_csrf(request: Request) -> None:
 @router.get("/status", response_model=AuthStatusResponse)
 def auth_status(request: Request, db: Session = Depends(get_db)):
     """Public: tells the login screen whether a session is active."""
-    token = request.cookies.get(SESSION_COOKIE)
+    token = extract_session_token(request)
     if token:
         session = db.query(AuthSession).filter(AuthSession.id == _token_id(token)).first()
         if session and session.expires_at > utcnow():
             user = db.get(User, session.user_id)
             if user:
-                return AuthStatusResponse(authenticated=True, account_exists=True, user=_user_out(user))
+                return AuthStatusResponse(authenticated=True, account_exists=True, user=_user_out(user, token))
     return AuthStatusResponse(authenticated=False, account_exists=account_exists(db))
 
 
@@ -62,21 +67,22 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     login_throttle.reset(ip)
     token = create_session(db, user, request.headers.get("user-agent", ""))
     set_session_cookie(response, token)
-    return _user_out(user)
+    return _user_out(user, token)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     _require_csrf(request)
-    delete_session(db, request.cookies.get(SESSION_COOKIE))
+    delete_session(db, extract_session_token(request))
     clear_session_cookie(response)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
 
 @router.get("/me", response_model=UserResponse)
-def me(user: User = Depends(require_user)):
-    return _user_out(user)
+def me(request: Request, user: User = Depends(require_user)):
+    token = getattr(request.state, "session_token", None) or extract_session_token(request)
+    return _user_out(user, token)
 
 
 @router.put("/profile", response_model=UserResponse)
