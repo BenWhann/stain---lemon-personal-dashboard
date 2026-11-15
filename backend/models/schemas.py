@@ -306,3 +306,5 @@ class HealthResponse(BaseModel):
     environment: str
     database: str
     uptime_seconds: float
+    dialect: Optional[str] = None
+    env_detected: Optional[list[str]] = None

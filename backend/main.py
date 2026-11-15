@@ -74,16 +74,26 @@ for router in (
 
 @app.get("/api/health", response_model=HealthResponse, tags=["System"])
 def health_check():
+    import os
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         db_state = "connected"
     except Exception:
         db_state = "unavailable"
+    
+    detected = [
+        k for k in [
+            "DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL",
+            "POSTGRES_URL_NON_POOLING", "DATABASE_URL_POOLED", "NEON_DATABASE_URL"
+        ] if os.environ.get(k)
+    ]
     return HealthResponse(
         status="healthy" if db_state == "connected" else "degraded",
         version=APP_VERSION,
         environment=settings.APP_ENV,
         database=db_state,
-        uptime_seconds=round(time.time() - start_time, 2)
+        uptime_seconds=round(time.time() - start_time, 2),
+        dialect=engine.dialect.name,
+        env_detected=detected,
     )
