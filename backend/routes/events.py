@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from database.connection import get_db
-from models.db_models import Event
+from models.db_models import Event, Task
 from models.schemas import EventCreate, EventUpdate, EventResponse
 
 router = APIRouter(prefix="/api/events", tags=["Events"])
@@ -39,13 +39,46 @@ def create_event(event_in: EventCreate, db: Session = Depends(get_db)):
         }
         icon = icon_map.get(event_in.category, "📅")
 
+    task_id = event_in.task_id
+
+    # If task_id was provided, ensure it exists
+    if task_id is not None:
+        existing_task = db.query(Task).filter(Task.id == task_id).first()
+        if not existing_task:
+            task_id = None
+
+    # Every calendar event must link to a task: auto-create if not explicitly linked
+    if task_id is None:
+        cat_map = {
+            "Academic": "Grad School",
+            "Work": "Work",
+            "Bills": "Bills",
+            "Wellness": "Personal",
+            "Personal": "Personal",
+        }
+        task_cat = cat_map.get(event_in.category, "Personal")
+        new_task = Task(
+            title=event_in.title,
+            category=task_cat,
+            priority="Purr-fect",
+            due_date=event_in.date,
+            source="Calendar",
+            status="Pending",
+            completed=False,
+            notes=f"Linked to calendar event ({event_in.time})" if event_in.time else "Linked to calendar event",
+        )
+        db.add(new_task)
+        db.flush()
+        task_id = new_task.id
+
     event = Event(
         title=event_in.title,
         time=event_in.time,
         date=event_in.date,
         category=event_in.category,
         icon=icon,
-        location=event_in.location or ""
+        location=event_in.location or "",
+        task_id=task_id,
     )
     db.add(event)
     db.commit()
@@ -59,6 +92,11 @@ def update_event(event_id: int, event_in: EventUpdate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Event not found")
         
     update_data = event_in.model_dump(exclude_unset=True)
+    if "task_id" in update_data and update_data["task_id"] is not None:
+        task = db.query(Task).filter(Task.id == update_data["task_id"]).first()
+        if not task:
+            raise HTTPException(status_code=400, detail="Linked task not found")
+            
     for key, value in update_data.items():
         setattr(event, key, value)
         

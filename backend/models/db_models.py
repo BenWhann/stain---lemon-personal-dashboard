@@ -36,6 +36,11 @@ class Task(Base):
         order_by="Subtask.position",
         lazy="selectin",
     )
+    events = relationship(
+        "Event",
+        back_populates="task",
+        lazy="selectin",
+    )
 
 
 class Subtask(Base):
@@ -60,7 +65,10 @@ class Event(Base):
     category = Column(String(100), default="Academic")  # Academic, Work, Bills, Wellness, Personal
     icon = Column(String(20), default="📅")
     location = Column(String(255), default="")
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=utcnow)
+
+    task = relationship("Task", back_populates="events", lazy="joined")
 
 
 class Habit(Base):
