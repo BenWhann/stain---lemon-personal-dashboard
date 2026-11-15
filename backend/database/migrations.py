@@ -18,6 +18,9 @@ ADDED_COLUMNS = {
         ("pomodoros", "INTEGER DEFAULT 0"),
         ("completed_at", "DATETIME"),
     ],
+    "events": [
+        ("task_id", "INTEGER REFERENCES tasks(id) ON DELETE SET NULL"),
+    ],
 }
 
 
@@ -82,6 +85,69 @@ def _migrate_legacy_habit_days(engine: Engine, today: date) -> None:
         _meta_set(conn, "habit_checks_v2", "done")
 
 
+def _link_orphan_events_to_tasks(engine: Engine) -> None:
+    """Ensure every existing calendar event links to a task."""
+    insp = inspect(engine)
+    if not insp.has_table("events") or not insp.has_table("tasks"):
+        return
+    existing = {c["name"] for c in insp.get_columns("events")}
+    if "task_id" not in existing:
+        return
+
+    with engine.begin() as conn:
+        rows = conn.execute(text("SELECT id, title, date, category FROM events WHERE task_id IS NULL")).fetchall()
+        for ev_id, title, ev_date, cat in rows:
+            matching = conn.execute(
+                text("SELECT id FROM tasks WHERE title = :t LIMIT 1"), {"t": title}
+            ).fetchone()
+            if matching:
+                conn.execute(
+                    text("UPDATE events SET task_id = :tid WHERE id = :eid"),
+                    {"tid": matching[0], "eid": ev_id},
+                )
+            else:
+                task_cat = "Grad School" if cat == "Academic" else ("Bills" if cat == "Bills" else ("Work" if cat == "Work" else "Personal"))
+                if engine.dialect.name == "sqlite":
+                    conn.execute(
+                        text(
+                            "INSERT INTO tasks (title, category, priority, due_date, source, status, completed, notes, position, pomodoros) "
+                            "VALUES (:title, :cat, 'Purr-fect', :due, 'Calendar', 'Pending', 0, 'Auto-linked from calendar event', 0, 0)"
+                        ),
+                        {"title": title, "cat": task_cat, "due": ev_date},
+                    )
+                    tid = conn.execute(text("SELECT last_insert_rowid()")).fetchone()[0]
+                else:
+                    res = conn.execute(
+                        text(
+                            "INSERT INTO tasks (title, category, priority, due_date, source, status, completed, notes, position, pomodoros) "
+                            "VALUES (:title, :cat, 'Purr-fect', :due, 'Calendar', 'Pending', false, 'Auto-linked from calendar event', 0, 0) "
+                            "RETURNING id"
+                        ),
+                        {"title": title, "cat": task_cat, "due": ev_date},
+                    )
+                    tid = res.fetchone()[0]
+                conn.execute(
+                    text("UPDATE events SET task_id = :tid WHERE id = :eid"),
+                    {"tid": tid, "eid": ev_id},
+                )
+
+
+def _sync_postgres_sequences(engine: Engine) -> None:
+    """Prevent duplicate key errors when primary keys were inserted explicitly."""
+    if engine.dialect.name != "postgresql":
+        return
+    with engine.begin() as conn:
+        for tbl in ["tasks", "events", "habits", "habit_checks", "bookmarks", "assignments", "focus_sessions", "subtasks"]:
+            try:
+                conn.execute(text(
+                    f"SELECT setval(pg_get_serial_sequence('{tbl}', 'id'), coalesce(max(id), 1), max(id) IS NOT NULL) FROM {tbl}"
+                ))
+            except Exception as e:
+                logger.debug("Sequence sync skipped for %s: %s", tbl, e)
+
+
 def run_migrations(engine: Engine, today: date | None = None) -> None:
     _add_missing_columns(engine)
     _migrate_legacy_habit_days(engine, today or date.today())
+    _link_orphan_events_to_tasks(engine)
+    _sync_postgres_sequences(engine)

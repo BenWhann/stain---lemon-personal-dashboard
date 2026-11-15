@@ -1,13 +1,16 @@
 import { create } from 'zustand';
 import { api, errorMessage } from '../lib/api';
 import { toast } from './toast';
+import { useTasks } from './tasks';
 import type { CalendarEvent } from '../types';
+
+export type EventInput = Omit<CalendarEvent, 'id' | 'task'> & { create_linked_task?: boolean };
 
 interface EventState {
   events: CalendarEvent[];
   fetch: () => Promise<void>;
-  add: (e: Omit<CalendarEvent, 'id'>) => Promise<void>;
-  update: (id: number, patch: Partial<CalendarEvent>) => Promise<void>;
+  add: (e: EventInput) => Promise<CalendarEvent | null>;
+  update: (id: number, patch: Partial<CalendarEvent>) => Promise<CalendarEvent | null>;
   remove: (id: number) => Promise<void>;
 }
 
@@ -26,17 +29,25 @@ export const useEvents = create<EventState>((set, get) => ({
     try {
       const created = await api.post<CalendarEvent>('/events', e);
       set({ events: [...get().events, created].sort(byDate) });
+      // Refresh tasks in case a matching task was auto-created or linked
+      void useTasks.getState().fetch();
       toast.success(`Added "${created.title}"`);
+      return created;
     } catch (err) {
       toast.error(`Event not saved. ${errorMessage(err)}`);
+      return null;
     }
   },
   update: async (id, patch) => {
     try {
       const saved = await api.put<CalendarEvent>(`/events/${id}`, patch);
       set({ events: get().events.map((e) => (e.id === id ? saved : e)).sort(byDate) });
+      void useTasks.getState().fetch();
+      toast.success(`Updated "${saved.title}"`);
+      return saved;
     } catch (err) {
       toast.error(`Event not updated. ${errorMessage(err)}`);
+      return null;
     }
   },
   remove: async (id) => {
@@ -48,7 +59,13 @@ export const useEvents = create<EventState>((set, get) => ({
       if (ev) {
         toast.undo(`Removed "${ev.title}"`, () => {
           void get().add({
-            title: ev.title, time: ev.time, date: ev.date, category: ev.category, icon: ev.icon, location: ev.location,
+            title: ev.title,
+            time: ev.time,
+            date: ev.date,
+            category: ev.category,
+            icon: ev.icon,
+            location: ev.location,
+            task_id: ev.task_id,
           });
         });
       }

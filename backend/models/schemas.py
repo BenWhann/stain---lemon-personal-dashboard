@@ -99,10 +99,11 @@ class EventBase(BaseModel):
     category: str = Field(default="Academic", max_length=100)
     icon: Optional[str] = Field(default=None, max_length=20)
     location: Optional[str] = Field(default="", max_length=255)
+    task_id: Optional[int] = Field(default=None)
 
 
 class EventCreate(EventBase):
-    pass
+    create_linked_task: Optional[bool] = False
 
 
 class EventUpdate(BaseModel):
@@ -112,6 +113,7 @@ class EventUpdate(BaseModel):
     category: Optional[str] = Field(default=None, max_length=100)
     icon: Optional[str] = Field(default=None, max_length=20)
     location: Optional[str] = Field(default=None, max_length=255)
+    task_id: Optional[int] = None
 
 
 class EventResponse(BaseModel):
@@ -122,6 +124,8 @@ class EventResponse(BaseModel):
     category: str
     icon: Optional[str] = None
     location: Optional[str] = ""
+    task_id: Optional[int] = None
+    task: Optional[TaskResponse] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

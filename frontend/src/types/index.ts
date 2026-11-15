@@ -52,6 +52,8 @@ export interface CalendarEvent {
   category: EventCategory | string;
   icon?: string | null;
   location?: string | null;
+  task_id?: number | null;
+  task?: Task | null;
 }
 
 export interface Habit {
