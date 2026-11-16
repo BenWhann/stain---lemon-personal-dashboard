@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     DEFAULT_SHEET_URL: str = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLEXf7tzlK1byIE6qXmD5aFbjBFxfNX5tJJj8AeXqlZS3bAgIAG4O0s_OLwsW6uBG2v7WwR2NO7Z_K/pub?gid=0&single=true&output=csv"
     AUTO_SYNC_ENABLED: bool = True
 
+    # --- Integrations & AI ---
+    INTEGRATION_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    DASHBOARD_PUBLIC_URL: str = ""
+
     # --- Auth ---
     # Used only on first boot, when the database has no account yet.
     ADMIN_USERNAME: str = "admin"
@@ -37,6 +43,13 @@ class Settings(BaseSettings):
         if self.COOKIE_SECURE is not None:
             return self.COOKIE_SECURE
         return not self.is_dev
+
+    @property
+    def effective_integration_key(self) -> str:
+        if self.INTEGRATION_KEY and self.INTEGRATION_KEY.strip():
+            return self.INTEGRATION_KEY.strip()
+        import hashlib
+        return hashlib.sha256(f"{self.SECRET_KEY}:integration-key".encode()).hexdigest()[:32]
 
 
 settings = Settings()

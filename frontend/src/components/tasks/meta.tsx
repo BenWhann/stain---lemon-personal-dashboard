@@ -63,3 +63,36 @@ export const CategoryLabel: React.FC<{ category: string }> = ({ category }) => {
     </span>
   );
 };
+
+export const SourceBadge: React.FC<{ source?: string | null; className?: string }> = ({ source, className }) => {
+  if (!source || source === 'Manual' || source === 'Master Sheet') return null;
+  const s = source.toLowerCase();
+  let label = source;
+  let icon = '✨';
+  if (s.includes('gmail') || s.includes('email') || s.includes('mail')) {
+    icon = '✉️';
+    label = 'Gmail';
+  } else if (s.includes('calendar')) {
+    icon = '📅';
+    label = 'Calendar';
+  } else if (s.includes('chat') || s.includes('slack')) {
+    icon = '💬';
+    label = 'Chat';
+  } else if (s.includes('gemini') || s.includes('ai')) {
+    icon = '✨';
+    label = 'Gemini';
+  }
+
+  return (
+    <span
+      className={cx(
+        'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-honey/10 text-honey-deep dark:text-honey border border-honey/25',
+        className
+      )}
+      title={`Created automatically from: ${source}`}
+    >
+      <span>{icon}</span>
+      <span>{label}</span>
+    </span>
+  );
+};

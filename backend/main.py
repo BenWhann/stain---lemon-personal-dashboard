@@ -17,6 +17,7 @@ from routes import (
     sync_router,
     focus_router,
     auth_router,
+    integrations_router,
 )
 from security import require_user
 
@@ -56,6 +57,9 @@ if origins:
 
 # Public routes
 app.include_router(auth_router)
+
+# Integrations & AI Webhooks (authenticate via X-Integration-Key, Bearer, or session)
+app.include_router(integrations_router)
 
 # Everything else requires a signed-in session
 protected = [Depends(require_user)]
