@@ -312,3 +312,55 @@ class HealthResponse(BaseModel):
     uptime_seconds: float
     dialect: Optional[str] = None
     env_detected: Optional[list[str]] = None
+
+
+# --- AI & Integrations ---
+class AIExtractedTask(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    category: str = Field(default="Grad School", max_length=100)
+    priority: Priority = "Purr-fect"
+    due_date: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+    source: Optional[str] = Field(default="Gmail", max_length=100)
+    source_id: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = Field(default="", max_length=20000)
+    subtasks: List[str] = Field(default_factory=list)
+
+    _blank_due = field_validator("due_date", mode="before")(_blank_to_none)
+
+
+class AIIngestRequest(BaseModel):
+    tasks: List[AIExtractedTask] = Field(default_factory=list)
+
+
+class AIIngestResponse(BaseModel):
+    success: bool
+    added_count: int
+    skipped_count: int
+    tasks: List[TaskResponse] = Field(default_factory=list)
+    message: str
+
+
+class AIExtractRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=100000)
+    context: Optional[str] = Field(default="Email message", max_length=255)
+    api_key: Optional[str] = Field(default=None, max_length=255)
+    source: Optional[str] = Field(default="Gemini Scan", max_length=100)
+    source_id: Optional[str] = Field(default=None, max_length=100)
+    auto_save: bool = True
+
+
+class AIExtractResponse(BaseModel):
+    success: bool
+    has_action_items: bool
+    summary: Optional[str] = None
+    extracted_tasks: List[AIExtractedTask] = Field(default_factory=list)
+    saved_tasks: List[TaskResponse] = Field(default_factory=list)
+    message: str
+
+
+class IntegrationStatusResponse(BaseModel):
+    integration_configured: bool
+    gemini_configured: bool
+    integration_key_preview: str
+    gemini_model: str
+    webhook_url: str

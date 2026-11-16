@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Loader2, LogOut, RefreshCw, Upload } from 'lucide-react';
+import { Check, Copy, Download, FileCode, Loader2, LogOut, RefreshCw, Sparkles, Upload } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
 import { useAuth } from '../../store/auth';
 import { useTasks } from '../../store/tasks';
@@ -43,6 +43,83 @@ export const Settings: React.FC = () => {
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [pwBusy, setPwBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [integrationStatus, setIntegrationStatus] = useState<{
+    integration_configured: boolean;
+    gemini_configured: boolean;
+    integration_key_preview: string;
+    gemini_model: string;
+    webhook_url: string;
+  } | null>(null);
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [testText, setTestText] = useState('');
+  const [customGeminiKey, setCustomGeminiKey] = useState('');
+  const [extractBusy, setExtractBusy] = useState(false);
+  const [extractResult, setExtractResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get<typeof integrationStatus>('/integrations/status')
+      .then(setIntegrationStatus)
+      .catch(() => {});
+  }, []);
+
+  const copyScript = async () => {
+    try {
+      const res = await fetch('/api/integrations/script', {
+        headers: { 'X-Requested-With': 'lemon-stain' },
+      });
+      const code = await res.text();
+      await navigator.clipboard.writeText(code);
+      setCopiedScript(true);
+      toast.success('Google Apps Script copied! Paste it into script.google.com');
+      setTimeout(() => setCopiedScript(false), 3000);
+    } catch {
+      toast.error("Couldn't copy script to clipboard.");
+    }
+  };
+
+  const copyWebhook = async () => {
+    if (!integrationStatus?.webhook_url) return;
+    try {
+      await navigator.clipboard.writeText(integrationStatus.webhook_url);
+      setCopiedWebhook(true);
+      toast.success('Webhook URL copied!');
+      setTimeout(() => setCopiedWebhook(false), 3000);
+    } catch {
+      toast.error("Couldn't copy URL.");
+    }
+  };
+
+  const handleTestExtraction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testText.trim()) return toast.error('Please enter or paste some text first.');
+    setExtractBusy(true);
+    setExtractResult(null);
+    try {
+      const res = await api.post<{
+        success: boolean;
+        has_action_items: boolean;
+        summary?: string;
+        message: string;
+        saved_tasks: unknown[];
+      }>('/integrations/extract-task', {
+        content: testText.trim(),
+        context: 'Manual test in Settings',
+        api_key: customGeminiKey.trim() || undefined,
+        auto_save: true,
+        source: 'Gemini Scan',
+      });
+      await tasks.fetch();
+      setExtractResult(res.message + (res.summary ? ` (${res.summary})` : ''));
+      toast.success(`Gemini processed your text and saved ${res.saved_tasks.length} task(s)!`);
+      setTestText('');
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setExtractBusy(false);
+    }
+  };
 
   const saveName = async () => {
     if (!name.trim() || name.trim() === user?.display_name) return;
@@ -186,7 +263,102 @@ export const Settings: React.FC = () => {
         </div>
       </Card>
 
-      <Card title="Password" blurb="Changing it signs out every other browser." i={4}>
+      <Card
+        title="Gemini & Inbox Automation"
+        blurb="Automatically scan incoming emails (Gmail) and calendar events with Gemini Pro to create tasks dynamically."
+        i={4}
+      >
+        <div className="space-y-4 rounded-xl border border-line/20 bg-ink/[0.02] p-4 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-medium text-ink">Background Scheduled Scanner</p>
+              <p className="text-xs text-ink-faint">
+                Runs automatically inside her Google account every 15 minutes, using Gemini Pro to extract tasks.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void copyScript()}
+              className="btn-honey inline-flex items-center gap-1.5 text-xs font-semibold"
+            >
+              {copiedScript ? <Check className="h-3.5 w-3.5" /> : <FileCode className="h-3.5 w-3.5" />}
+              {copiedScript ? 'Copied script!' : 'Copy Google Apps Script'}
+            </button>
+          </div>
+
+          <div className="grid gap-2 border-t border-line/10 pt-2 text-xs text-ink-soft">
+            <p className="font-semibold text-ink">How to activate in 2 minutes:</p>
+            <ol className="list-decimal pl-4 space-y-1">
+              <li>Open <a href="https://script.google.com" target="_blank" rel="noreferrer" className="underline font-medium text-honey-deep dark:text-honey">script.google.com</a> and click <strong>New project</strong>.</li>
+              <li>Paste the copied script into the editor (replacing any code there).</li>
+              <li>Fill in her Gemini API key (from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-medium text-honey-deep dark:text-honey">Google AI Studio</a>).</li>
+              <li>Select <strong>installTrigger</strong> from the function dropdown at top and click <strong>Run</strong>. Done!</li>
+            </ol>
+          </div>
+
+          {integrationStatus && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/10 pt-2 text-xs">
+              <span className="text-ink-faint truncate max-w-full">
+                Webhook: <code className="rounded bg-ink/[0.04] px-1 py-0.5 text-ink">{integrationStatus.webhook_url}</code>
+              </span>
+              <button
+                type="button"
+                onClick={() => void copyWebhook()}
+                className="btn-ghost inline-flex items-center gap-1 px-2 py-1 text-xs"
+              >
+                {copiedWebhook ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copiedWebhook ? 'Copied' : 'Copy URL'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Quick interactive test tool */}
+        <div className="space-y-3 pt-2">
+          <div>
+            <p className="text-sm font-medium text-ink">Quick Test / Instant Extraction</p>
+            <p className="text-xs text-ink-faint">
+              Paste an email, message, or syllabus snippet here to immediately test Gemini action item extraction.
+            </p>
+          </div>
+
+          <form onSubmit={handleTestExtraction} className="space-y-2.5">
+            <textarea
+              className="field resize-y text-xs leading-relaxed"
+              rows={3}
+              placeholder="Paste email text here, e.g.: 'Hi Aretta, please review chapter 4 of the draft by Thursday and send feedback to the lab.'"
+              value={testText}
+              onChange={(e) => setTestText(e.target.value)}
+            />
+
+            {!integrationStatus?.gemini_configured && (
+              <input
+                type="password"
+                className="field text-xs"
+                placeholder="Optional: Gemini API Key (starts with AIzaSy...)"
+                value={customGeminiKey}
+                onChange={(e) => setCustomGeminiKey(e.target.value)}
+              />
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="submit"
+                disabled={extractBusy || !testText.trim()}
+                className="btn-honey inline-flex items-center gap-1.5 text-xs"
+              >
+                {extractBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {extractBusy ? 'Analyzing with Gemini…' : 'Extract & Save Task'}
+              </button>
+              {extractResult && (
+                <span className="text-xs font-medium text-sage">{extractResult}</span>
+              )}
+            </div>
+          </form>
+        </div>
+      </Card>
+
+      <Card title="Password" blurb="Changing it signs out every other browser." i={5}>
         <form className="grid gap-3 sm:grid-cols-3" onSubmit={changePassword}>
           <input type="password" autoComplete="current-password" className="field" placeholder="Current password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} required />
           <input type="password" autoComplete="new-password" className="field" placeholder="New (10+ characters)" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} required minLength={10} />
@@ -202,7 +374,7 @@ export const Settings: React.FC = () => {
         </form>
       </Card>
 
-      <Card title="Keyboard shortcuts" i={5}>
+      <Card title="Keyboard shortcuts" i={6}>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
           {[
             ['Ctrl/⌘ K', 'Quick actions and search'],

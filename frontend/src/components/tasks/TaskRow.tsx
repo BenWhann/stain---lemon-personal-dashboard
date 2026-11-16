@@ -8,7 +8,7 @@ import { toast } from '../../store/toast';
 import type { Task } from '../../types';
 import { PawCheck } from '../ui/PawCheck';
 import { cx } from '../ui/cx';
-import { CategoryLabel, DueChip, PriorityChip } from './meta';
+import { CategoryLabel, DueChip, PriorityChip, SourceBadge } from './meta';
 
 interface TaskRowProps {
   task: Task;
@@ -64,6 +64,7 @@ export const TaskRow = forwardRef<HTMLLIElement, TaskRowProps>(({ task, onOpen, 
           {!compact && <PriorityChip priority={task.priority} />}
           {compact && task.priority === 'Zoomies' && !task.completed && <PriorityChip priority="Zoomies" />}
           <CategoryLabel category={task.category} />
+          <SourceBadge source={task.source} />
           {task.subtasks.length > 0 && (
             <span className="inline-flex items-center gap-1 text-xs text-ink-faint tabular">
               <ListChecks className="h-3 w-3" />

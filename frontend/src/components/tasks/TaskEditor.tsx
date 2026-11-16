@@ -9,7 +9,7 @@ import { CATEGORIES, PRIORITIES, STATUSES, type Task, type TaskPriority, type Ta
 import { Modal } from '../ui/Modal';
 import { PawCheck } from '../ui/PawCheck';
 import { Segmented } from '../ui/Segmented';
-import { PRIORITY_META } from './meta';
+import { PRIORITY_META, SourceBadge } from './meta';
 
 interface TaskEditorProps {
   taskId: number | null;
@@ -67,21 +67,28 @@ const EditorBody: React.FC<{ task: Task; onClose: () => void }> = ({ task, onClo
           onToggle={(p) => void completeTaskWithFlair(task.id, p)}
           className="mt-1.5"
         />
-        <textarea
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={saveTitle}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              (e.target as HTMLTextAreaElement).blur();
-            }
-          }}
-          rows={1}
-          aria-label="Title"
-          className="heading w-full resize-none bg-transparent text-2xl leading-tight outline-none"
-          maxLength={255}
-        />
+        <div className="min-w-0 flex-1">
+          <textarea
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                (e.target as HTMLTextAreaElement).blur();
+              }
+            }}
+            rows={1}
+            aria-label="Title"
+            className="heading w-full resize-none bg-transparent text-2xl leading-tight outline-none"
+            maxLength={255}
+          />
+          {task.source && task.source !== 'Manual' && (
+            <div className="mt-1">
+              <SourceBadge source={task.source} />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

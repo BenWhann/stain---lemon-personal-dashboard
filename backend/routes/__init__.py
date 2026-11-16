@@ -7,6 +7,7 @@ from .notes import router as notes_router
 from .sync import router as sync_router
 from .focus import router as focus_router
 from .auth import router as auth_router
+from .integrations import router as integrations_router
 
 __all__ = [
     "tasks_router",
@@ -18,4 +19,5 @@ __all__ = [
     "sync_router",
     "focus_router",
     "auth_router",
+    "integrations_router",
 ]
